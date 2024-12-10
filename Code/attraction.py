@@ -9,7 +9,7 @@ class Attraction:
         """
 
         self.attraction_characteristics = attraction_characteristics
-        self.state = {} # characterizes attractions current state
+        self.state = {}  # characterizes attractions current state
         self.history = {} 
 
         if (
@@ -21,13 +21,8 @@ class Attraction:
                 f"Attraction {self.attraction_characteristics['name']} 'popularity' value must be an integer between"
                 "1 and 10"
             )
-        self.initialize_attraction()
 
-    
-    def initialize_attraction(self):
-        """ Sets up the attraction """ 
-
-        #characteristics
+        # characteristics
         self.name = self.attraction_characteristics["name"]
         self.run_time = self.attraction_characteristics["run_time"]
         self.capacity = self.attraction_characteristics["hourly_throughput"] * (self.attraction_characteristics["run_time"]/60) 
@@ -39,74 +34,32 @@ class Attraction:
         self.exp_queue_ratio = self.attraction_characteristics["expedited_queue_ratio"]
         self.exp_queue_passes = 0
 
-        #state
+        # state
         self.state["agents_in_attraction"] = []
         self.state["queue"] = []
         self.state["exp_queue"] = []
+        self.exp_pass_status = "open" if self.exp_queue_ratio > 0 else "closed"
         self.state["exp_queue_passes_distributed"] = 0
+        self.state["exp_queue_passes_skipped"] = 0
+        self.state["exp_return_time"] = 0
+        self.wait_time = 0
+        self.exp_wait_time = 0
 
         # history
         self.history["queue_length"] = {}
         self.history["queue_wait_time"] = {}
         self.history["exp_queue_length"] = {}
         self.history["exp_queue_wait_time"] = {}
-           
 
     def get_wait_time(self):
-        """ Returns the expected queue wait time according the the equation
+        """ Returns the expected queue wait time according to the equation
         """
-
-        if self.expedited_queue:
-            queue_len = len(self.state["queue"])
-            exp_queue_len = len(self.state["exp_queue"])
-            exp_seats = int(self.capacity * self.exp_queue_ratio)
-            standby_seats = self.capacity - exp_seats
-
-            runs = 0
-            while queue_len >= self.capacity:    
-                if exp_queue_len > exp_seats:
-                    exp_queue_len -= exp_seats
-                    if queue_len > standby_seats:
-                        queue_len -= standby_seats
-                    else:
-                        queue_len = 0
-                else:
-                    queue_len -= self.capacity - exp_queue_len
-                    exp_queue_len = 0
-                
-                runs += 1
-
-            return runs * self.run_time + self.run_time_remaining
-        else:
-            return (len(self.state["queue"]) // self.capacity) * self.run_time + self.run_time_remaining
+        return self.wait_time
     
     def get_exp_wait_time(self):
-        """ Returns the expected queue wait time according the the equation
+        """ Returns the expected queue wait time according to the equation
         """
-
-        if self.expedited_queue:
-            queue_len = len(self.state["queue"])
-            exp_queue_len = len(self.state["exp_queue"])
-            exp_seats = int(self.capacity * self.exp_queue_ratio)
-            standby_seats = self.capacity - exp_seats
-
-            runs = 0
-            while exp_queue_len >= self.capacity:    
-                if exp_queue_len > exp_seats:
-                    exp_queue_len -= exp_seats
-                    if queue_len > standby_seats:
-                        queue_len -= standby_seats
-                    else:
-                        queue_len = 0
-                else:
-                    queue_len -= self.capacity - exp_queue_len
-                    exp_queue_len = 0
-                
-                runs += 1
-
-            return runs * self.run_time + self.run_time_remaining
-        else:
-            return 0
+        return self.exp_wait_time
     
     def add_to_queue(self, agent_id):
         """ Adds an agent to the queue """
@@ -114,7 +67,7 @@ class Attraction:
         self.state["queue"].append(agent_id)
     
     def add_to_exp_queue(self, agent_id):
-        """ Adds an agent to the expeditied queue """
+        """ Adds an agent to the expedited queue """
 
         self.state["exp_queue"].append(agent_id)
         expedited_wait_time = self.get_exp_wait_time()
@@ -144,24 +97,6 @@ class Attraction:
         exiting_agents = []
         loaded_agents = []
 
-        # calculate total exp queue passes available
-        if self.expedited_queue:
-            if time < park_close:
-                remaining_operating_hours = (park_close - time) // 60
-                passed_operating_hours = time // 60
-                self.exp_queue_passes = (
-                    (self.capacity * (60/self.run_time) * self.exp_queue_ratio * remaining_operating_hours) 
-                    - max(
-                            (
-                                self.state["exp_queue_passes_distributed"] - 
-                                (self.capacity * (60/self.run_time) * self.exp_queue_ratio * passed_operating_hours)
-                            )
-                        , 0
-                    )
-                )
-            else:
-                self.exp_queue_passes = 0 
-
         if self.run_time_remaining == 0:
             # left agents off attraction
             exiting_agents = self.state["agents_in_attraction"]
@@ -176,7 +111,7 @@ class Attraction:
             else:
                 max_queue_agents = int(self.capacity - max_exp_queue_agents)
             
-            # load expeditied queue agents
+            # load expedited queue agents
             expedited_agents_to_load = [agent_id for agent_id in self.state["exp_queue"][:max_exp_queue_agents]]
             self.state["agents_in_attraction"] = expedited_agents_to_load
             self.state["exp_queue"] = self.state["exp_queue"][max_exp_queue_agents:]
@@ -219,8 +154,34 @@ class Attraction:
             }
         ) 
 
+    def update_exp_return_window(self, time, close):
+        """
+        Update the expedited queue return window based on the number of total passes accounted for.
+        Inputs:
+            :time - current park time (in minutes)
+            :close - park close time (in minutes from park open)
+        """
+        total_passes = self.state["exp_queue_passes_distributed"] + self.state["exp_queue_passes_skipped"]
+        minutes_to_process_all = (total_passes * self.run_time) / self.capacity
+        min_post_time = time + (5 - time % 5)  # rounds up to nearest 5 (adds 5 if time is divisible by 5)
+        max_post_time = close - 60
+        if min_post_time > max_post_time:
+            # no more expedited passes for the day
+            self.exp_pass_status = "closed"
+        if minutes_to_process_all < min_post_time:
+            self.state["exp_return_time"] = min_post_time
+        else:
+            self.state["exp_return_time"] = minutes_to_process_all + (5 - minutes_to_process_all % 5)
 
+    def update_wait_times(self):
+        """
+        Updates the expected queue wait time according to new equation.  We will update estimated wait times based on the
+        assumption that all queues will remain saturated during an agent's time in the queue, and that the ride will
+        operate at its theoretical capacity.
+        """
+        if self.expedited_queue:
+            self.wait_time = (len(self.state["queue"]) // (self.capacity * (1 - self.exp_queue_ratio))) * self.run_time + self.run_time_remaining
+            self.exp_wait_time = (len(self.state["exp_queue"]) // (self.capacity * self.exp_queue_ratio)) + self.run_time_remaining
+        else:
+            self.wait_time = (len(self.state["queue"]) // self.capacity) * self.run_time + self.run_time_remaining
 
-        
-
-        

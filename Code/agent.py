@@ -144,7 +144,7 @@ class Agent:
         self.log += f"Agent arrived at park at time {time}. "
 
     def make_state_change_decision(self, attractions_dict, activities_dict, time, park_closed):
-        """  When an agent is idle allow them to make a decison about what to do next. """
+        """  When an agent is idle allow them to make a decision about what to do next. """
 
         # always leave park if the park is closed
         if park_closed:
@@ -188,15 +188,20 @@ class Agent:
         return action, location
 
     def decide_attraction_or_activity(self, attractions_dict):
-        """ Agent decides if the want to visit an attraction or activity. The agent will decide between
-        an attraction or activity. If they select an activity that's it. If the select an attraction they
-        see if an valid attractions exist for them to visit, while considering there attraction visit
+        """ Agent decides if they want to visit an attraction or activity. The agent will decide between
+        an attraction or activity. If they select an activity, that's it. If they select an attraction, they
+        see if any valid attractions exist for them to visit, while considering their attraction visit
         history and their expedited_pass status. If no valid attractions exist then they will default to 
         an activity. """
 
         coinflip = random.uniform(0, 1)
         if coinflip <= self.behavior["attraction_preference"]:
             # determine which attractions agent is eligible for
+
+            # this whole part can be cleaned up a lot.
+            # the logic for child/adult rides is redundant, and the reduction of
+            # attractions based on repeat policy can be done before doing a single
+            # check of child/adult filters.
             if self.behavior["allow_repeats"]:
                 valid_attractions = [
                     attraction for attraction in attractions_dict.keys() 
@@ -255,9 +260,12 @@ class Agent:
         return desired_decision_type, valid_attractions
 
     def select_attraction_decision(self, valid_attractions, attractions_dict):
-        """ Selects an attraction to visit based off of the attraction popularity """
+        """ Selects an attraction to visit based on the attraction popularity """
 
         # get valid attraction wait times
+        # -- I don't like that we're running a bunch of while loops to calculate something EVERY time an agent
+        # thinks about what to do.  we should be able to record a "posted" wait time at each minute step
+        # and have the agents base their decisions on this shared information.
         attraction_wait_times = {
             attraction_name: attraction.get_wait_time() 
             for attraction_name, attraction in attractions_dict.items()
@@ -279,6 +287,7 @@ class Agent:
                 ceiling += attraction_weight
                 if floor < rng <= ceiling: 
                     desired_attraction = attraction
+                    # could we add a break statement here (or refactor this section)?
                 floor += attraction_weight
 
             if (
@@ -286,7 +295,7 @@ class Agent:
                 and self.state["expedited_pass_ability"]
                 and len(self.state["expedited_pass"]) < self.state["exp_limit"]
                 and attractions_dict[desired_attraction].expedited_queue 
-                and attractions_dict[desired_attraction].exp_queue_passes > 0
+                and attractions_dict[desired_attraction].exp_pass_status == "open"
             ): 
                 action, location = "get pass", desired_attraction
             elif (
@@ -381,7 +390,7 @@ class Agent:
         )
     
     def assign_expedited_return_time(self, expedited_wait_time):
-        """ Updates agent state when are assigned a return time to their expedited attraction """
+        """ Updates agent state when they are assigned a return time to their expedited attraction """
 
         self.state["expedited_return_time"].append(expedited_wait_time)
         self.state["current_action"] = "idling"

@@ -1,7 +1,10 @@
 import numpy as np
 
+
 class Activity:
-    """ Class which defines Activitys within the park simulation. Stores activity characteristics, current state and log. """
+    """
+    Class which defines Activities within the park simulation. Stores activity characteristics, current state and log.
+    """
 
     def __init__(self, activity_characteristics, random_seed=None):
         """  
@@ -10,7 +13,7 @@ class Activity:
         """
 
         self.activity_characteristics = activity_characteristics
-        self.state = {} # characterizes activity current state
+        self.state = {}  # characterizes activity current state
         self.history = {} 
         self.random_seed = random_seed
 
@@ -23,24 +26,17 @@ class Activity:
                 f"activity {self.activity_characteristics['name']} 'popularity' value must be an integer between"
                 "1 and 10"
             )
-        self.initialize_activity()
-
-    
-    def initialize_activity(self):
-        """ Sets up the activity """ 
-
-        #characteristics
+        # characteristics
         self.name = self.activity_characteristics["name"]
         self.popularity = self.activity_characteristics["popularity"]
         self.mean_time = self.activity_characteristics["mean_time"]
        
-        #state
+        # state
         self.state["visitors"] = []
         self.state["visitor_time_remaining"] = []
 
         # history
         self.history["total_vistors"] = {}
-           
 
     def add_to_activity(self, agent_id, expedited_return_time):
         """ Adds an agent to the activity and generates the time they will spend there. """
@@ -81,7 +77,7 @@ class Activity:
             if self.state["visitor_time_remaining"][ind] == 0
         ]
 
-        # remove from visitor list, going in reverse maintins indices
+        # remove from visitor list, going in reverse maintains indices
         exiting_agents.reverse()
         for ind, agent_id in exiting_agents:
             del self.state["visitors"][ind]
@@ -103,4 +99,4 @@ class Activity:
             {
                 time: len(self.state["visitors"])
             }
-        ) 
+        )

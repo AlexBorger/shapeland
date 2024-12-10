@@ -164,13 +164,18 @@ class Park:
         # get idle agents
         idle_agent_ids = self.get_idle_agent_ids()
 
+        # update attraction posted wait times and expedited queue return times
+        for attraction_name, attraction in self.attractions.items():
+            attraction.update_wait_times()
+            attraction.update_exp_return_window(time=self.time, close=self.park_close)
+
         # get idle activity action
         for agent_id in idle_agent_ids:
             action, location = self.agents[agent_id].make_state_change_decision(
                 attractions_dict=self.attractions, 
                 activities_dict=self.activities, 
                 time=self.time,
-                park_closed=self.park_close<=self.time,
+                park_closed=self.park_close <= self.time
             )
             if action == "get pass":
                 self.history["distributed_passes"] += 1
