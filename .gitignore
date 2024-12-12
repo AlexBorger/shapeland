@@ -1,1 +1,4 @@
 *.pyc
+*.idea
+*.tk
+sim_test/
