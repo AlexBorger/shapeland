@@ -8,7 +8,7 @@ def main():
     SHOW_PLOTS = True
     RNG_SEED = 10
 
-    TOTAL_DAILY_AGENTS = 25000 # 38047  # actual average
+    TOTAL_DAILY_AGENTS = 50000  # 38047  # actual average
     PERFECT_ARRIVALS = True
     HOURLY_PERCENT = {
         "10:00 AM": 10,
@@ -138,18 +138,18 @@ def main():
     RNG_SEED = 5
 
     PLOT_RANGE = {
-        "Attraction Queue Length": 1800,
-        "Attraction Wait Time": 200,
-        "Attraction Expedited Queue Length": 6000,
-        "Attraction Expedited Wait Time": 500,
-        "Activity Vistors": 20000,
+        "Attraction Queue Length": 'auto',
+        "Attraction Wait Time": 'auto',
+        "Attraction Expedited Queue Length": 'auto',
+        "Attraction Expedited Wait Time": 'auto',
+        "Activity Vistors": 'auto',
         "Approximate Agent Distribution (General)": 1.0,
         "Approximate Agent Distribution (Specific)": 1.0,
-        "Attraction Average Wait Times": 120,
+        "Attraction Average Wait Times": 'auto',
         "Agent Attractions Histogram": 1.0,
-        "Attraction Total Visits": 46000,
-        "Expedited Pass Distribution": 150000,
-        "Age Class Distribution": 20000,
+        "Attraction Total Visits": 'auto',
+        "Expedited Pass Distribution": 'auto',
+        "Age Class Distribution": 'auto',
     }
 
     park = Park(

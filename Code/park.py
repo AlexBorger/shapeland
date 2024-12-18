@@ -114,7 +114,7 @@ class Park:
         total_agents = sum(self.schedule.values())
         for agent_id in range(total_agents):
             random.seed(self.random_seed + agent_id)
-            exp_ability = random.uniform(0,1) < exp_ability_pct
+            exp_ability = random.uniform(0, 1) < exp_ability_pct
 
             agent = Agent(random_seed=self.random_seed)
             agent.initialize_agent(
@@ -203,6 +203,7 @@ class Park:
                 redeem = self.agents[agent_id].agent_boarded_attraction(name=attraction_name, time=self.time)
                 if redeem:
                     self.history["redeemed_passes"] += 1
+                    attraction.redeem_pass()
 
         # process activities
         for activity_name, activity in self.activities.items():
@@ -243,12 +244,13 @@ class Park:
         """ Updates the agent state, attraction state and activity state based on the action """
 
         if action == "leaving":
-            if agent.state["expedited_pass"]:
-                for attraction in agent.state["expedited_pass"]:
-                    self.attractions[attraction].return_pass(agent.agent_id)
-                    agent.return_exp_pass(attraction=attraction)
+            # TODO: Determine if we should be forfeiting an exp pass because we left the park
+            #if agent.state["expedited_pass"]:
+            #    for attraction in agent.state["expedited_pass"]:
+            #        self.attractions[attraction].return_pass(agent.agent_id)
+            #        agent.return_exp_pass(attraction=attraction)
             agent.leave_park(time=time)
-            
+
         if action == "traveling":
             if location in self.attractions:
                 agent.enter_queue(attraction=location, time=time)
@@ -261,11 +263,15 @@ class Park:
                     expedited_return_time=agent.state["expedited_return_time"]
                 )
 
+        if action == "redeeming exp pass":
+            agent.enter_exp_queue(attraction=location, time=time)
+            self.attractions[location].add_to_exp_queue(agent_id=agent.agent_id)
+
         if action == "get pass":
             agent.get_pass(attraction=location, time=time)
             self.attractions[location].remove_pass()
-            expedited_wait_time = self.attractions[location].add_to_exp_queue(agent_id=agent.agent_id)
-            agent.assign_expedited_return_time(expedited_wait_time=expedited_wait_time)
+            expedited_return_time = self.attractions[location].get_exp_return_time()
+            agent.assign_expedited_return_time(expedited_return_time=expedited_return_time, current_time=time)
 
     def calculate_total_active_agents(self):
         """ Counts how many agents are currently active within the park """
@@ -291,13 +297,18 @@ class Park:
         """ Create a hued lineplot derived from a list of dictionaries """
         
         df = pd.DataFrame(dict_list)
-        l = [time for ind, time in enumerate(list(df['Time'].unique())) if ind%60==0]
+        l = [time for ind, time in enumerate(list(df['Time'].unique())) if ind % 60 == 0]
         plt.figure(figsize=(15,8))
         ax = sns.lineplot(data=df, x=x, y=y, hue=hue)
         ax.set(xticks=l, xticklabels=l, title=title)
         ax.tick_params(axis='x', rotation=45)
         if y_max:
-            ax.set(ylim=(0, y_max))
+            if y_max == 'auto':
+                auto_y_max = round(1.1 * max(df[y]))  # add 10% empty space above max data point
+                auto_y_max = max(auto_y_max, max(df[y]) + 1)  # for small values, 10% may round down. add 1 as buffer
+                ax.set(ylim=(0, auto_y_max))
+            else:
+                ax.set(ylim=(0, y_max))
         plt.savefig(location, transparent=False, facecolor="white", bbox_inches="tight")
         plt.savefig(f"{location} Transparent", transparent=True, bbox_inches="tight")
         plt.show()
@@ -325,7 +336,7 @@ class Park:
                     headers='keys', 
                     tablefmt='psql', 
                     showindex=False,
-                    floatfmt=('.2f')
+                    floatfmt='.2f'
                 )
             )
         if not show:
@@ -336,14 +347,20 @@ class Park:
         """ Create a hued barplot derived from a list of dictionaries """
 
         df = pd.DataFrame(dict_list)
-        plt.figure(figsize=(15,8))
+        plt.figure(figsize=(15, 8))
         if estimator:
             ax = sns.barplot(data=df, x=x, y=y, hue=hue, ci=None, estimator=estimator)
         else:
             ax = sns.barplot(data=df, x=x, y=y, hue=hue)
         ax.set(title=title)
         if y_max:
-            ax.set(ylim=(0, y_max))
+            if y_max == 'auto':
+                if not estimator:  # estimator is used when dataset is more granular than viz.  if estimator, sns auto.
+                    auto_y_max = round(1.1 * max(df[y]))
+                    auto_y_max = max(auto_y_max, max(df[y]) + 1)  # for small values, 10% may round down. add 1 as pad
+                    ax.set(ylim=(0, auto_y_max))
+            else:
+                ax.set(ylim=(0, y_max))
         plt.savefig(location, transparent=False, facecolor="white", bbox_inches="tight")
         plt.savefig(f"{location} Transparent", transparent=True, bbox_inches="tight")
         plt.show()
@@ -354,10 +371,10 @@ class Park:
                     headers='keys', 
                     tablefmt='psql', 
                     showindex=False,
-                    floatfmt=('.2f')
+                    floatfmt='.2f'
                 )
             )
-        if show and estimator==sum:
+        if show and estimator == sum:
             print(
                 tabulate(
                     df.groupby(x).sum().reset_index(),
@@ -368,7 +385,6 @@ class Park:
             )
         if not show:
             plt.close()
-             
 
     def make_plots(self, show=False):
         """ Plots key park information, save to version folder """
@@ -463,7 +479,6 @@ class Park:
                         "Type": activity_name
                     }
             )
-
 
         attraction_counter = []
         attraction_density = []

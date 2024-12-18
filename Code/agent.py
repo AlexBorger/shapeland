@@ -3,15 +3,16 @@ import numpy as np
 
 from behavior_reference import BEHAVIOR_ARCHETYPE_PARAMETERS
 
+
 class Agent:
     """ Class which defines agents within the park simulation. Stores agent characteristics, current state and log. """
 
     def __init__(self, random_seed):
         """  """
 
-        self.agent_id = None # unique identification number for agent
-        self.state = {} # characterizes agents current state
-        self.log = "" # logs agent history as text
+        self.agent_id = None  # unique identification number for agent
+        self.state = {}  # characterizes agents current state
+        self.log = ""  # logs agent history as text
         self.random_seed = random_seed
 
         for behavior_type, behavior_dict in BEHAVIOR_ARCHETYPE_PARAMETERS.items():
@@ -19,7 +20,7 @@ class Agent:
             # deal with fuzzy float addition
             if not 0.98 <= age_class_sum <= 1.0:
                 raise AssertionError(
-                    f"Behavior Archtype {behavior_type} characteristics percent_no_child_rides, percent_no_adult_rides,"
+                    f"Behavior Archetype {behavior_type} characteristics percent_no_child_rides, percent_no_adult_rides,"
                     "and percent_no_preference, must add up to 1"
                 )
 
@@ -150,7 +151,7 @@ class Agent:
         if park_closed:
             action = "leaving"
             location = "gate"
-
+        # TODO: Determine if this should be in an indented else block.  if park_closed... no reason to make a choice
         # decide if they want to leave
         action, location = self.decide_to_leave_park(time=time)
 
@@ -165,6 +166,11 @@ class Agent:
 
     def make_attraction_activity_decision(self, activities_dict, attractions_dict):
         """ Decide what to do """
+        # TODO: If agent has a valid expedited queue pass, they should use it.
+        for i in range(len(self.state["expedited_pass"])):
+            if self.state["expedited_return_time"][i] <= 0:
+                action, location = "redeeming exp pass", self.state["expedited_pass"][i]
+                return action, location
 
         desired_decision_type, valid_attractions = self.decide_attraction_or_activity(
             attractions_dict=attractions_dict,
@@ -263,9 +269,6 @@ class Agent:
         """ Selects an attraction to visit based on the attraction popularity """
 
         # get valid attraction wait times
-        # -- I don't like that we're running a bunch of while loops to calculate something EVERY time an agent
-        # thinks about what to do.  we should be able to record a "posted" wait time at each minute step
-        # and have the agents base their decisions on this shared information.
         attraction_wait_times = {
             attraction_name: attraction.get_wait_time() 
             for attraction_name, attraction in attractions_dict.items()
@@ -370,6 +373,14 @@ class Agent:
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent entered queue for {attraction} at time {time}. "
 
+    def enter_exp_queue(self, attraction, time):
+        """ Updates agent state when they enter an attraction's expedited queue """
+
+        self.state["current_location"] = attraction
+        self.state["current_action"] = "queueing"
+        self.state["time_spent_at_current_location"] = 0
+        self.log += f"Agent entered exp queue for {attraction} at time {time}. "
+
     def begin_activity(self, activity, time):
         """ Updates agent state when they visit an activity """
 
@@ -379,7 +390,7 @@ class Agent:
         self.log += f"Agent visited the activity {activity} at time {time}. "
 
     def get_pass(self, attraction, time):
-        """ Updates agent state when the get a pass """
+        """ Updates agent state when they get a pass """
 
         self.state["current_location"] = "gate"
         self.state["current_action"] = "getting pass"
@@ -389,13 +400,14 @@ class Agent:
             f"Agent picked up an expedited pass for {attraction} at time {time}. "
         )
     
-    def assign_expedited_return_time(self, expedited_wait_time):
+    def assign_expedited_return_time(self, expedited_return_time, current_time):
         """ Updates agent state when they are assigned a return time to their expedited attraction """
 
-        self.state["expedited_return_time"].append(expedited_wait_time)
+        minutes_to_return_time = max(0, expedited_return_time - current_time)
+        self.state["expedited_return_time"].append(minutes_to_return_time)
         self.state["current_action"] = "idling"
         self.log += (
-            f"The estimated expedited queue wait time is {expedited_wait_time} minutes. "
+            f"The expedited queue return time is in {minutes_to_return_time} minutes. "
         )
         
     def return_exp_pass(self, attraction):
@@ -406,12 +418,11 @@ class Agent:
             if attraction_pass == attraction:
                 ind_to_remove = ind
 
-        del self.state["expedited_pass"][ind_to_remove]
-        del self.state["expedited_return_time"][ind_to_remove]
-
-        self.log += (
-            f"Agent decided to leave park and returned the expedited pass. "
-        )
+        if ind_to_remove is not None:
+            del self.state["expedited_pass"][ind_to_remove]
+            del self.state["expedited_return_time"][ind_to_remove]
+        else:
+            raise ValueError(f"Agent {self.agent_id} hit a snag returning exp pass upon boarding.")
 
     def agent_exited_attraction(self, name, time):
         """ Update agents state after they leave an attraction """
@@ -426,15 +437,7 @@ class Agent:
     def agent_boarded_attraction(self, name, time):
         """ Update agents state after they board an attraction """
         if name in self.state["expedited_pass"]:
-            ind_to_remove = None
-            for ind, attraction_pass in enumerate(self.state["expedited_pass"]):
-                if attraction_pass == name:
-                    ind_to_remove = ind
-
-            if ind_to_remove != None:
-                del self.state["expedited_pass"][ind_to_remove]
-                del self.state["expedited_return_time"][ind_to_remove]
-
+            self.return_exp_pass(name)
             self.state["current_location"] = name
             self.state["current_action"] = "riding"
             self.state["time_spent_at_current_location"] = 0
@@ -455,5 +458,6 @@ class Agent:
         self.state["current_location"] = "gate"
         self.state["current_action"] = "idling"
         self.state["activities"][name]["times_visited"] += 1
+        self.state["activities"][name]["time_spent"] += self.state["time_spent_at_current_location"]
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent exited the activity {name} at time {time}. "

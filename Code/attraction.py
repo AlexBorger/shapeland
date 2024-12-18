@@ -41,6 +41,7 @@ class Attraction:
         self.exp_pass_status = "open" if self.exp_queue_ratio > 0 else "closed"
         self.state["exp_queue_passes_distributed"] = 0
         self.state["exp_queue_passes_skipped"] = 0
+        self.state["exp_queue_passes_redeemed"] = 0
         self.state["exp_return_time"] = 0
         self.wait_time = 0
         self.exp_wait_time = 0
@@ -60,6 +61,11 @@ class Attraction:
         """ Returns the expected queue wait time according to the equation
         """
         return self.exp_wait_time
+
+    def get_exp_return_time(self):
+        """ Returns the current expedited queue return time according to disbursement schedule
+        """
+        return self.state["exp_return_time"]
     
     def add_to_queue(self, agent_id):
         """ Adds an agent to the queue """
@@ -78,13 +84,19 @@ class Attraction:
 
         self.exp_queue_passes -= 1
         self.state["exp_queue_passes_distributed"] += 1
-        
+
+    # TODO: Consider deprecating this method or updating it to not remove agent from queue
     def return_pass(self, agent_id):
         """ Removes an expedited pass without redeeming it """
 
         self.exp_queue_passes += 1
         self.state["exp_queue_passes_distributed"] -= 1
         self.state["exp_queue"].remove(agent_id)
+
+    def redeem_pass(self):
+        """ Redeems a valid expedited pass after agent had it removed. """
+
+        self.state["exp_queue_passes_redeemed"] += 1
 
     def step(self, time, park_close):
         """ Handles the following actions:
@@ -161,17 +173,23 @@ class Attraction:
             :time - current park time (in minutes)
             :close - park close time (in minutes from park open)
         """
-        total_passes = self.state["exp_queue_passes_distributed"] + self.state["exp_queue_passes_skipped"]
-        minutes_to_process_all = (total_passes * self.run_time) / self.capacity
+        # TODO: Do this after each agent obtains a pass.
+        # TODO: Add handling of failed attempt to get pass?  Would the above warrant this?
+        # TODO: Update this to be based on current time and num passes not yet redeemed.
+        #total_passes = self.state["exp_queue_passes_distributed"] + self.state["exp_queue_passes_skipped"]
+        #minutes_to_process_all = (total_passes * self.run_time) / (self.capacity * self.exp_queue_ratio)
+        unredeemed_passes = self.state["exp_queue_passes_distributed"] - self.state["exp_queue_passes_redeemed"] - self.state["exp_queue_passes_skipped"]
+        minutes_to_process_unredeemed = (unredeemed_passes * self.run_time) / (self.capacity * self.exp_queue_ratio)
+        est_time_to_redeem_all = time + minutes_to_process_unredeemed
         min_post_time = time + (5 - time % 5)  # rounds up to nearest 5 (adds 5 if time is divisible by 5)
         max_post_time = close - 60
         if min_post_time > max_post_time:
             # no more expedited passes for the day
             self.exp_pass_status = "closed"
-        if minutes_to_process_all < min_post_time:
+        if est_time_to_redeem_all < min_post_time:
             self.state["exp_return_time"] = min_post_time
         else:
-            self.state["exp_return_time"] = minutes_to_process_all + (5 - minutes_to_process_all % 5)
+            self.state["exp_return_time"] = int(est_time_to_redeem_all + (5 - est_time_to_redeem_all % 5))
 
     def update_wait_times(self):
         """
@@ -181,7 +199,7 @@ class Attraction:
         """
         if self.expedited_queue:
             self.wait_time = (len(self.state["queue"]) // (self.capacity * (1 - self.exp_queue_ratio))) * self.run_time + self.run_time_remaining
-            self.exp_wait_time = (len(self.state["exp_queue"]) // (self.capacity * self.exp_queue_ratio)) + self.run_time_remaining
+            self.exp_wait_time = (len(self.state["exp_queue"]) // (self.capacity * self.exp_queue_ratio)) * self.run_time + self.run_time_remaining
         else:
             self.wait_time = (len(self.state["queue"]) // self.capacity) * self.run_time + self.run_time_remaining
 
