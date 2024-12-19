@@ -49,6 +49,8 @@ class Agent:
                 "current_location": None,
                 "current_action": None,
                 "time_spent_at_current_location": 0,
+                "destination": None,
+                "time_to_destination": 0,
                 "expedited_return_time": [],
                 "expedited_pass": [],
                 "expedited_pass_ability": exp_ability,
@@ -146,6 +148,7 @@ class Agent:
 
     def make_state_change_decision(self, attractions_dict, activities_dict, time, park_closed):
         """  When an agent is idle allow them to make a decision about what to do next. """
+        # TODO: Should this method return action, location tuple or should it update internal state? or both?
 
         # always leave park if the park is closed
         if park_closed:
@@ -161,6 +164,10 @@ class Agent:
                 activities_dict=activities_dict,
                 attractions_dict=attractions_dict,
             )
+        # update internal state based on decided destination
+        self.state["destination"] = location
+        self.state["time_to_destination"] = 5  # primitive 5 min delay on all actions for now
+        self.state["current_action"] = action
 
         return action, location
 
@@ -353,6 +360,8 @@ class Agent:
             self.state["time_spent_at_current_location"] += 1
             if self.state["expedited_pass"]:
                 self.state["expedited_return_time"] = [val-1 for val in self.state["expedited_return_time"]]
+            if self.state["time_to_destination"] > 0:
+                self.state["time_to_destination"] -= 1
 
     # ACTIONS
     def leave_park(self, time):
@@ -360,6 +369,8 @@ class Agent:
 
         self.state["within_park"] = False
         self.state["current_location"] = "outside park"
+        self.state["destination"] = None
+        self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = None
         self.state["exit_time"] = time
         self.state["time_spent_at_current_location"] = 0
@@ -369,6 +380,8 @@ class Agent:
         """ Updates agent state when they enter an attraction queue """
 
         self.state["current_location"] = attraction
+        self.state["destination"] = None
+        self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "queueing"
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent entered queue for {attraction} at time {time}. "
@@ -377,6 +390,8 @@ class Agent:
         """ Updates agent state when they enter an attraction's expedited queue """
 
         self.state["current_location"] = attraction
+        self.state["destination"] = None
+        self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "queueing"
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent entered exp queue for {attraction} at time {time}. "
@@ -385,6 +400,8 @@ class Agent:
         """ Updates agent state when they visit an activity """
 
         self.state["current_location"] = activity
+        self.state["destination"] = None
+        self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "browsing"
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent visited the activity {activity} at time {time}. "
@@ -392,7 +409,10 @@ class Agent:
     def get_pass(self, attraction, time):
         """ Updates agent state when they get a pass """
 
+        # TODO: location should update to attraction if obtaining pass location is set to "attraction"
         self.state["current_location"] = "gate"
+        self.state["destination"] = None
+        self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "getting pass"
         self.state["expedited_pass"].append(attraction)
         self.state["time_spent_at_current_location"] = 0

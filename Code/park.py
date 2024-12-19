@@ -161,7 +161,7 @@ class Park:
         
         self.arrival_index += total_arrivals
 
-        # get idle agents
+        # get idle agents and agents en route to a destination
         idle_agent_ids = self.get_idle_agent_ids()
 
         # update attraction posted wait times and expedited queue return times
@@ -171,20 +171,23 @@ class Park:
 
         # get idle activity action
         for agent_id in idle_agent_ids:
+            # does the park object really need these action/location values? or is it just an orchestrator that should
+            # let the agents sort out their own internal state...?
             action, location = self.agents[agent_id].make_state_change_decision(
                 attractions_dict=self.attractions, 
                 activities_dict=self.activities, 
                 time=self.time,
                 park_closed=self.park_close <= self.time
             )
-            if action == "get pass":
-                self.history["distributed_passes"] += 1
+
+        # all agents that are now ready to take a delayed action should now be processed.
+        # either: (a) agent is not at their next location and we (later) subtract 1 min from time_to_destination, or
+        # (b) they reached destination and we will now process them exactly as we would have before.
+        reached_destination_agent_ids = self.get_reached_destination_agent_ids()
+        for agent_id in reached_destination_agent_ids:
             self.update_park_state(
-                agent=self.agents[agent_id], 
-                action=action, 
-                location=location, 
-                time=self.time,
-                attractions=self.attractions
+                agent=self.agents[agent_id],
+                time=self.time
             )
             
         # process attractions
@@ -239,13 +242,37 @@ class Park:
         ]
 
         return idle_agent_ids
+
+    def get_reached_destination_agent_ids(self):
+        """ Identifies agents within park who have reached their destination where they will take an action that they
+        previously chose.  Currently, actions that require agent cooldown (agent.state["time_to_destination"] > 0) are:
+            - leaving
+            - traveling (either to attraction or activity)
+            - redeeming exp pass
+            - get pass
+        """
+
+        reached_destination_agent_ids = [
+            agent_id for agent_id, agent_dict in self.agents.items()
+            if agent_dict.state["within_park"]
+            and agent_dict.state["current_action"] in ["leaving", "traveling", "redeeming exp pass", "get pass"]
+            and agent_dict.state["time_to_destination"] == 0
+        ]
+
+        return reached_destination_agent_ids
     
-    def update_park_state(self, agent, action, location, time, attractions):
+    def update_park_state(self, agent, time):
         """ Updates the agent state, attraction state and activity state based on the action """
+
+        if agent.state["time_to_destination"] > 0:
+            raise ValueError(f"Agent {agent.agent_id} reached update_park_state before reaching destination.")
+
+        action = agent.state["current_action"]
+        location = agent.state["destination"]
 
         if action == "leaving":
             # TODO: Determine if we should be forfeiting an exp pass because we left the park
-            #if agent.state["expedited_pass"]:
+            # if agent.state["expedited_pass"]:
             #    for attraction in agent.state["expedited_pass"]:
             #        self.attractions[attraction].return_pass(agent.agent_id)
             #        agent.return_exp_pass(attraction=attraction)
@@ -259,7 +286,7 @@ class Park:
             if location in self.activities:
                 agent.begin_activity(activity=location, time=time)
                 self.activities[location].add_to_activity(
-                    agent_id=agent.agent_id, 
+                    agent_id=agent.agent_id,
                     expedited_return_time=agent.state["expedited_return_time"]
                 )
 
@@ -272,6 +299,7 @@ class Park:
             self.attractions[location].remove_pass()
             expedited_return_time = self.attractions[location].get_exp_return_time()
             agent.assign_expedited_return_time(expedited_return_time=expedited_return_time, current_time=time)
+            self.history["distributed_passes"] += 1
 
     def calculate_total_active_agents(self):
         """ Counts how many agents are currently active within the park """
@@ -322,7 +350,7 @@ class Park:
         df = pd.DataFrame(dict_list)
         l = sorted(list(set(val for val in df[x])))
         plt.figure(figsize=(15,8))
-        ax = sns.histplot(data=df, x=x, stat="percent", bins=np.arange(-0.5, len(l))) # weird trick to align labels
+        ax = sns.histplot(data=df, x=x, stat="percent", bins=np.arange(-0.5, len(l)))  # weird trick to align labels
         ax.set(title=title, xticks=l, xticklabels=l)
         plt.savefig(location, transparent=False, facecolor="white", bbox_inches="tight")
         plt.savefig(f"{location} Transparent", transparent=True, bbox_inches="tight")

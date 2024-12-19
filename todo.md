@@ -10,9 +10,13 @@
  - Mobile Orders?
  - - A separate system that guests could use to schedule meal pickup.  Subject to demand as well.
     
-4. Add travel time **[LOW-MED]**
-   - for starters, we could simply add 5 minutes to account for traveling.
-   - more accurate would be to have known distance from current position to all other attractions
+4. Add travel time **[LOW-MED] [PARTIALLY DONE]**
+   - for starters, we could simply add 5 minutes to account for traveling.  **[DONE]**
+     - agents now have two additional state fields, "destination" and "time_to_destination". 
+     - with this change, the main park step() method only processes actions for agents that have reached their destination.  with this update, all actions (get exp pass, go to redeem exp pass, visit attraction's standby queue, leave park) all take 5 minutes to do.
+     - Once an agent's time_to_destination reaches zero (i.e., they reached it) they will proceed with their action as they would have previously, and each of those actions then reset destination to None and time_to_destination to 0.
+   - more accurate would be to have known distance from current position to all other attractions **[TO DO]**
+     - For simplicity, we can add "park_area" as an attribute for each attraction and activity, and only build a representation of distances between areas instead of each attraction/activity.
 5. Update guest utility function to factor in:
 - distance of options **[LOW-MED]**
 - number of times option has already been done **[LOW-MED]**

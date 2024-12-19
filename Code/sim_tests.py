@@ -8,7 +8,7 @@ def main():
     SHOW_PLOTS = True
     RNG_SEED = 10
 
-    TOTAL_DAILY_AGENTS = 50000  # 38047  # actual average
+    TOTAL_DAILY_AGENTS = 5000  # 38047  # actual average
     PERFECT_ARRIVALS = True
     HOURLY_PERCENT = {
         "10:00 AM": 10,
