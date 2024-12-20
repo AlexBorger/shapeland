@@ -5,6 +5,9 @@
    - Arrive and leave park at same time.  Groups will also almost always stay together and arrivals and departures should coincide.  Very niche addition would be for guests to split up with some pressure to join back together before leaving, although not necessary.
 
 2. Add more detailed ride interactions. **[MED]**  Rides can break down and operate below theoretical capacity.  How does this impact the availability of future priority passes and how does it impact the queues for the rest of the day?
+   - Break up dispatches into ride vehicles whose total throughput matches attraction config
+   - Define ride vehicle dimensions and fill vehicles based on group sizes
+      - Blocked on #1.
 
 3. Food options can be diversified and can be modeled as FCFS queues themselves. **[MED]**
    - We could model each food location with a queue and specify average time to eat/drink items from that location.
@@ -34,8 +37,8 @@
       - Note: As of now, exp queue wait times are naturally low even on busy days.  This wouldn't be necessary until we account for 
 8. Log more data at each timestep for on the fly analytics **[LOW]**
    - add graphs:
-      - Number of Guests in Park by minute/hour of Operating Day
-      - Return time vs time of day for each attraction - shows how quickly expedited passes are disbursed
+      - Number of Guests in Park by minute/hour of Operating Day **[DONE]**
+      - Return time vs time of day for each attraction - shows how quickly expedited passes are distributed **[DONE]**
 
 9. Add more expedited systems
    - FP+
@@ -45,11 +48,14 @@
       - this one would require utility function to consider price as well as time 
    - Universal, Six Flags, Cedar Fair systems 
     
-10. Resort-level abstraction
-    - if we want, we can make a resort.py object to which parks and hotels belong, and guests can move between them over the length of their stay
+10. World-level abstraction
+    - if we want, we can make a world.py object to which parks and hotels belong, and guests can move between them over the length of their stay
     - this would allow for the inclusion of additional behavior like:
       - returning to hotel to relax midday
       - park hopping for resort guests and APs
+    - We can create a hotel-level abstraction called hotel.py or resort.py that has its own amenities
+      - Each resort can have multiple transportation methods to other resorts and parks
+    
     
 
 side note - the following are all addressed in Disney's FastPass: A Complicated History @ 1:02:00 :

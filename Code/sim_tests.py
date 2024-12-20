@@ -215,6 +215,7 @@ def main():
         "Activity Vistors": 'auto',
         "Approximate Agent Distribution (General)": 1.0,
         "Approximate Agent Distribution (Specific)": 1.0,
+        "Agent Arrivals and Departures": 'auto',
         "Attraction Average Wait Times": 'auto',
         "Agent Attractions Histogram": 1.0,
         "Attraction Total Visits": 'auto',

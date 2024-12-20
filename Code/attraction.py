@@ -1,4 +1,3 @@
-
 class Attraction:
     """ Class which defines Attractions within the park simulation. Stores attraction characteristics,
     current state and log. """
@@ -11,12 +10,12 @@ class Attraction:
 
         self.attraction_characteristics = attraction_characteristics
         self.state = {}  # characterizes attractions current state
-        self.history = {} 
+        self.history = {}
 
         if (
-            type(self.attraction_characteristics["popularity"]) != int 
-            or self.attraction_characteristics["popularity"] < 1
-            or self.attraction_characteristics["popularity"] > 10
+                type(self.attraction_characteristics["popularity"]) != int
+                or self.attraction_characteristics["popularity"] < 1
+                or self.attraction_characteristics["popularity"] > 10
         ):
             raise AssertionError(
                 f"Attraction {self.attraction_characteristics['name']} 'popularity' value must be an integer between"
@@ -27,7 +26,8 @@ class Attraction:
         self.name = self.attraction_characteristics["name"]
         self.park_area = self.attraction_characteristics["park_area"]
         self.run_time = self.attraction_characteristics["run_time"]
-        self.capacity = self.attraction_characteristics["hourly_throughput"] * (self.attraction_characteristics["run_time"]/60) 
+        self.capacity = self.attraction_characteristics["hourly_throughput"] * (
+                    self.attraction_characteristics["run_time"] / 60)
         self.popularity = self.attraction_characteristics["popularity"]
         self.child_eligible = self.attraction_characteristics["child_eligible"]
         self.adult_eligible = self.attraction_characteristics["adult_eligible"]
@@ -53,27 +53,28 @@ class Attraction:
         self.history["queue_wait_time"] = {}
         self.history["exp_queue_length"] = {}
         self.history["exp_queue_wait_time"] = {}
+        self.history["exp_return_time"] = {}
 
     def get_wait_time(self):
         """ Returns the expected queue wait time according to the equation
         """
         return self.wait_time
-    
+
     def get_exp_wait_time(self):
         """ Returns the expected queue wait time according to the equation
         """
         return self.exp_wait_time
 
     def get_exp_return_time(self):
-        """ Returns the current expedited queue return time according to disbursement schedule
+        """ Returns the current expedited queue return time according to distribution schedule
         """
         return self.state["exp_return_time"]
-    
+
     def add_to_queue(self, agent_id):
         """ Adds an agent to the queue """
 
         self.state["queue"].append(agent_id)
-    
+
     def add_to_exp_queue(self, agent_id):
         """ Adds an agent to the expedited queue """
 
@@ -107,7 +108,7 @@ class Attraction:
             - Loads queue agents
             - Begins Ride
         """
-        
+
         exiting_agents = []
         loaded_agents = []
 
@@ -124,7 +125,7 @@ class Attraction:
                 max_queue_agents = int(self.capacity - len(self.state["exp_queue"]))
             else:
                 max_queue_agents = int(self.capacity - max_exp_queue_agents)
-            
+
             # load expedited queue agents
             expedited_agents_to_load = [agent_id for agent_id in self.state["exp_queue"][:max_exp_queue_agents]]
             self.state["agents_in_attraction"] = expedited_agents_to_load
@@ -136,7 +137,7 @@ class Attraction:
             self.state["queue"] = self.state["queue"][max_queue_agents:]
 
             loaded_agents = self.state["agents_in_attraction"]
-        
+
         return exiting_agents, loaded_agents
 
     def pass_time(self):
@@ -151,7 +152,7 @@ class Attraction:
             {
                 time: len(self.state["queue"])
             }
-        ) 
+        )
         self.history["queue_wait_time"].update(
             {
                 time: self.get_wait_time()
@@ -161,12 +162,17 @@ class Attraction:
             {
                 time: len(self.state["exp_queue"])
             }
-        ) 
+        )
         self.history["exp_queue_wait_time"].update(
             {
                 time: self.get_exp_wait_time()
             }
-        ) 
+        )
+        self.history["exp_return_time"].update(
+            {
+                time: self.get_exp_return_time()
+            }
+        )
 
     def update_exp_return_window(self, time, close):
         """
@@ -178,17 +184,19 @@ class Attraction:
         # TODO: Do this after each agent obtains a pass.
         # TODO: Add handling of failed attempt to get pass?  Would the above warrant this?
         # TODO: Update this to be based on current time and num passes not yet redeemed.
-        #total_passes = self.state["exp_queue_passes_distributed"] + self.state["exp_queue_passes_skipped"]
-        #minutes_to_process_all = (total_passes * self.run_time) / (self.capacity * self.exp_queue_ratio)
-        unredeemed_passes = self.state["exp_queue_passes_distributed"] - self.state["exp_queue_passes_redeemed"] - self.state["exp_queue_passes_skipped"]
+        unredeemed_passes = self.state["exp_queue_passes_distributed"] - self.state["exp_queue_passes_redeemed"] - \
+            self.state["exp_queue_passes_skipped"]
         minutes_to_process_unredeemed = (unredeemed_passes * self.run_time) / (self.capacity * self.exp_queue_ratio)
         est_time_to_redeem_all = time + minutes_to_process_unredeemed
-        min_post_time = time + (5 - time % 5)  # rounds up to nearest 5 (adds 5 if time is divisible by 5)
+        min_post_time = max(est_time_to_redeem_all,
+                            time + (5 - time % 5),  # rounds up to nearest 5, always > time
+                            self.state["exp_return_time"]  # never lower the return window
+                            )
         max_post_time = close - 60
         if min_post_time > max_post_time:
             # no more expedited passes for the day
             self.exp_pass_status = "closed"
-        if est_time_to_redeem_all < min_post_time:
+        elif est_time_to_redeem_all < min_post_time:
             self.state["exp_return_time"] = min_post_time
         else:
             self.state["exp_return_time"] = int(est_time_to_redeem_all + (5 - est_time_to_redeem_all % 5))
@@ -200,8 +208,9 @@ class Attraction:
         operate at its theoretical capacity.
         """
         if self.expedited_queue:
-            self.wait_time = (len(self.state["queue"]) // (self.capacity * (1 - self.exp_queue_ratio))) * self.run_time + self.run_time_remaining
-            self.exp_wait_time = (len(self.state["exp_queue"]) // (self.capacity * self.exp_queue_ratio)) * self.run_time + self.run_time_remaining
+            self.wait_time = (len(self.state["queue"]) // (
+                        self.capacity * (1 - self.exp_queue_ratio))) * self.run_time + self.run_time_remaining
+            self.exp_wait_time = (len(self.state["exp_queue"]) // (
+                        self.capacity * self.exp_queue_ratio)) * self.run_time + self.run_time_remaining
         else:
             self.wait_time = (len(self.state["queue"]) // self.capacity) * self.run_time + self.run_time_remaining
-

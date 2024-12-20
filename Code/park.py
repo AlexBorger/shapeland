@@ -44,9 +44,12 @@ class Park:
         self.agents = {}
         self.attractions = {}
         self.activities = {}
-        self.history = {"total_active_agents": {}, "distributed_passes": 0, "redeemed_passes": 0}
+        self.history = {"total_active_agents": {}, "total_left_agents": {}, "distributed_passes": 0,
+                        "redeemed_passes": 0}
         self.time = 0
         self.arrival_index = 0
+        self.active_agents = 0
+        self.left_agents = 0
         self.park_close = None
     
     def generate_arrival_schedule(self, arrival_seed, total_daily_agents, perfect_arrivals):
@@ -72,27 +75,29 @@ class Park:
         operating_hours = len(arrival_seed)
         if operating_hours > 24:
             raise AssertionError(f"Arrival Schedule suggests park is open more than 24 hours ({operating_hours})")
+        last_hour_key = list(arrival_seed.keys())[-1]
+        if arrival_seed[last_hour_key] != 0:
+            last_hour_arrivals = arrival_seed[last_hour_key]
+            raise AssertionError(f"Arrival Schedule suggests closing hour has nonzero arrivals: {last_hour_arrivals}")
+
+        self.park_close = (len(arrival_seed) - 1) * 60  # last hour entry is closing time, don't count it
 
         # generate arrivals per minute by drawing from poisson distribution
         for hour, key in zip(range(operating_hours), arrival_seed):
             arrival_pct = arrival_seed[key]
-            # The first hour with 0 arrivals dictates the park is closed
-            if arrival_pct == 0 and not self.park_close:
-                self.park_close = hour * 60
 
-            total_hour_agents = total_daily_agents * arrival_pct * 0.01 # convert integer pct to decimal
+            total_hour_agents = total_daily_agents * arrival_pct * 0.01  # convert integer pct to decimal
             expected_minute_agents = total_hour_agents/60
 
-            # enforces randomness across hours but retains reproducibilty
+            # enforces randomness across hours but retains reproducibility
             rng = np.random.default_rng(self.random_seed+hour) 
             minute_arrivals = list(rng.poisson(lam=expected_minute_agents, size=60))
-
 
             for minute, arrivals in zip(range(60), minute_arrivals):
                 exact_minute = hour*60 + minute
                 self.schedule.update({exact_minute: arrivals})
         
-        # enfore perfect arrivals
+        # enforce perfect arrivals
         random.seed(self.random_seed)
         if perfect_arrivals:
             actual_total_daily_agents = sum(self.schedule.values())
@@ -158,13 +163,14 @@ class Park:
     def step(self):
         """ A minute of time passes, update all agents and attractions. """
 
-        # allow new arrivals to enter
-        total_arrivals = self.schedule[self.time]
-        for new_arrival_index in range(total_arrivals):
-            agent_index = self.arrival_index + new_arrival_index
-            self.agents[agent_index].arrive_at_park(time=self.time, park_area=self.entrance_park_area)
-        
-        self.arrival_index += total_arrivals
+        if self.time < self.park_close:
+            # allow new arrivals to enter
+            total_arrivals = self.schedule[self.time]
+            for new_arrival_index in range(total_arrivals):
+                agent_index = self.arrival_index + new_arrival_index
+                self.agents[agent_index].arrive_at_park(time=self.time, park_area=self.entrance_park_area)
+
+            self.arrival_index += total_arrivals
 
         # get idle agents and agents en route to a destination
         idle_agent_ids = self.get_idle_agent_ids()
@@ -242,7 +248,9 @@ class Park:
             activity.pass_time()
             activity.store_history(time=self.time)
 
+        # update own history
         self.calculate_total_active_agents()
+        self.history["total_left_agents"].update({self.time: self.left_agents})
 
         if self.verbosity == 1 and self.time % 60 == 0:
             self.print_metrics()
@@ -295,6 +303,7 @@ class Park:
             #        self.attractions[attraction].return_pass(agent.agent_id)
             #        agent.return_exp_pass(attraction=attraction)
             agent.leave_park(time=time)
+            self.left_agents += 1
 
         if action == "traveling":
             if location in self.attractions:
@@ -330,6 +339,7 @@ class Park:
         """ Counts how many agents are currently active within the park """
 
         active_agents = len([agent_id for agent_id, agent in self.agents.items() if agent.state["within_park"]])
+        self.active_agents = active_agents
         self.history["total_active_agents"].update({self.time: active_agents})
 
     def print_metrics(self):
@@ -374,7 +384,7 @@ class Park:
         
         df = pd.DataFrame(dict_list)
         l = sorted(list(set(val for val in df[x])))
-        plt.figure(figsize=(15,8))
+        plt.figure(figsize=(15, 8))
         ax = sns.histplot(data=df, x=x, stat="percent", bins=np.arange(-0.5, len(l)))  # weird trick to align labels
         ax.set(title=title, xticks=l, xticklabels=l)
         plt.savefig(location, transparent=False, facecolor="white", bbox_inches="tight")
@@ -451,6 +461,7 @@ class Park:
         queue_wait_time = []
         exp_queue_length = []
         exp_queue_wait_time = []
+        exp_queue_return_time = []
         for attraction_name, attraction in self.attractions.items():
             for time, val in attraction.history["queue_length"].items():
                 queue_length.append({"Time": time, "Agents": val, "Attraction": attraction_name})
@@ -460,6 +471,9 @@ class Park:
                 exp_queue_length.append({"Time": time, "Agents": val, "Attraction": attraction_name})
             for time, val in attraction.history["exp_queue_wait_time"].items():
                 exp_queue_wait_time.append({"Time": time, "Minutes": val, "Attraction": attraction_name})
+            for time, val in attraction.history["exp_return_time"].items():
+                exp_queue_return_time.append({"Time": time, "Expedited Queue Return Time": val,
+                                              "Attraction": attraction_name})
         
         avg_queue_wait_time = []
         for attraction_name, attraction in self.attractions.items():
@@ -494,6 +508,8 @@ class Park:
 
         # Agent Distribution
         broad_agent_distribution = []
+        specific_agent_distribution = []
+        park_population = []
         for time, total_agents in self.history["total_active_agents"].items():
             broad_agent_distribution.append(
                 {
@@ -503,7 +519,7 @@ class Park:
                     )/total_agents if total_agents > 0 else 0,
                     "Type": "Attractions"
                 }
-        )
+            )
             broad_agent_distribution.append(
                 {
                     "Time": time,
@@ -512,10 +528,29 @@ class Park:
                     )/total_agents if total_agents > 0 else 0,
                     "Type": "Activities"
                 }
-        )
-            
-        specific_agent_distribution = []
-        for time, total_agents in self.history["total_active_agents"].items():
+            )
+            park_population.append(
+                {
+                    "Time": time,
+                    "Agents": total_agents,
+                    "Type": "In Park"
+                }
+            )
+            park_population.append(
+                {
+                    "Time": time,
+                    "Agents": self.history["total_left_agents"][time],
+                    "Type": "Left Park"
+                }
+            )
+            park_population.append(
+                {
+                    "Time": time,
+                    "Agents": total_agents + self.history["total_left_agents"][time],
+                    "Type": "Total"
+                }
+            )
+            # Specific agent distribution
             for attraction_name, attraction in self.attractions.items():
                 specific_agent_distribution.append(
                     {
@@ -523,7 +558,7 @@ class Park:
                         "Approximate Percent": attraction.history["queue_length"][time]/total_agents if total_agents > 0 else 0,
                         "Type": attraction_name
                     }
-            )
+                )
             for activity_name, activity in self.activities.items():
                 specific_agent_distribution.append(
                     {
@@ -531,7 +566,7 @@ class Park:
                         "Approximate Percent": activity.history["total_vistors"][time]/total_agents if total_agents > 0 else 0,
                         "Type": activity_name
                     }
-            )
+                )
 
         attraction_counter = []
         attraction_density = []
@@ -598,6 +633,17 @@ class Park:
         )
 
         self.make_lineplot(
+            dict_list=exp_queue_return_time,
+            x="Time",
+            y="Expedited Queue Return Time",
+            hue="Attraction",
+            y_max=self.plot_range["Attraction Expedited Queue Return Times"],
+            title="Attraction Expedited Queue Return Times",
+            location=f"{self.version}/Attraction Expedited Queue Return Times",
+            show=show,
+        )
+
+        self.make_lineplot(
             dict_list=total_vistors, 
             x="Time", 
             y="Agents", 
@@ -627,6 +673,17 @@ class Park:
             y_max=self.plot_range["Approximate Agent Distribution (Specific)"],  
             title="Approximate Agent Distribution (Specific)",
             location=f"{self.version}/Approximate Agent Distribution (Specific)",
+            show=show,
+        )
+
+        self.make_lineplot(
+            dict_list=park_population,
+            x="Time",
+            y="Agents",
+            hue="Type",
+            y_max=self.plot_range["Agent Arrivals and Departures"],
+            title="Agent Arrivals and Departures",
+            location=f"{self.version}/Agent Arrivals and Departures",
             show=show,
         )
 

@@ -153,13 +153,13 @@ class Agent:
         """  When an agent is idle allow them to make a decision about what to do next. """
         # TODO: Should this method return action, location tuple or should it update internal state? or both?
 
+        # decide if they want to leave
         # always leave park if the park is closed
         if park_closed:
             action = "leaving"
             location = "gate"
-        # TODO: Determine if this should be in an indented else block.  if park_closed... no reason to make a choice
-        # decide if they want to leave
-        action, location = self.decide_to_leave_park(time=time)
+        else:
+            action, location = self.decide_to_leave_park(time=time)
 
         if not action:
             # make decisions while holding an expedited pass
