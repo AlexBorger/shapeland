@@ -1,14 +1,16 @@
 # TODO
 
 1. Add group dynamics. **[HARD]** Guests usually visit parks in groups and there is a strong bias for groups to do activities together.  The following features should be explored:
- - Group decisioning: Guests should usually make decisions together and visit attractions that everyone can agree on, with the occasional sit-out from a minority of the party
- - Arrive and leave park at same time.  Groups will also almost always stay together and arrivals and departures should coincide.  Very niche addition would be for guests to split up with some pressure to join back together before leaving, although not necessary.
+   - Group decisioning: Guests should usually make decisions together and visit attractions that everyone can agree on, with the occasional sit-out from a minority of the party
+   - Arrive and leave park at same time.  Groups will also almost always stay together and arrivals and departures should coincide.  Very niche addition would be for guests to split up with some pressure to join back together before leaving, although not necessary.
 
 2. Add more detailed ride interactions. **[MED]**  Rides can break down and operate below theoretical capacity.  How does this impact the availability of future priority passes and how does it impact the queues for the rest of the day?
 
 3. Food options can be diversified and can be modeled as FCFS queues themselves. **[MED]**
- - Mobile Orders?
- - - A separate system that guests could use to schedule meal pickup.  Subject to demand as well.
+   - We could model each food location with a queue and specify average time to eat/drink items from that location.
+     - e.g., a popcorn stand might have a long line but takes little time to eat, but a table service meal could be the opposite.
+   - Mobile Orders?
+     - A separate system that guests could use to schedule meal pickup.  Subject to demand as well.
     
 4. Add travel time **[LOW-MED] [MOSTLY DONE]**
    - for starters, we could simply add 5 minutes to account for traveling.  **[DONE]**
@@ -20,34 +22,34 @@
    - even more accurate would be to place POIs within park area and differentiate travel times within park area
    - even even more accurate would be to build an actual network of pathways that agents have to navigate to reach their destination.  they may or may not know the optimal path, so algorithmic path routing would need to take that into account.  **[TO DO]** **[VERY HARD]**
 5. Update guest utility function to factor in:
-- distance of options **[LOW-MED]**
-- number of times option has already been done **[LOW-MED]**
+   - distance of options **[LOW-MED]**
+   - number of times option has already been done **[LOW-MED]**
 
 6. Intentional Overposting **[LOW to HARD]**
-- in order to influence guest flow, overposting can be used to influence which attractions guests will choose.
-- guests should always act based on posted wait times and not actual wait times or true estimates.
+   - in order to influence guest flow, overposting can be used to influence which attractions guests will choose.
+   - guests should always act based on posted wait times and not actual wait times or true estimates.
 
 7. No more than 15 minutes in expedited queue  **[LOW-MED]**
-- guests will be upset if they have to wait long in the expedited queue. what mechanism could be implemented to ensure the wait times stay at or below 15 minutes? change split at merge?
-
+   - guests will be upset if they have to wait long in the expedited queue. what mechanism could be implemented to ensure the wait times stay at or below 15 minutes? change split at merge?
+      - Note: As of now, exp queue wait times are naturally low even on busy days.  This wouldn't be necessary until we account for 
 8. Log more data at each timestep for on the fly analytics **[LOW]**
-- add graphs:
-  - Number of Guests in Park by minute/hour of Operating Day
-  - Return time vs time of day for each attraction - shows how quickly expedited passes are disbursed
+   - add graphs:
+      - Number of Guests in Park by minute/hour of Operating Day
+      - Return time vs time of day for each attraction - shows how quickly expedited passes are disbursed
 
 9. Add more expedited systems
-- FP+
-- TDR system, priority pass + DPA
-- - this one would require utility function to consider price as well as time
-- Lightning Lane single / multi-pass
-- - this one would require utility function to consider price as well as time 
-- Universal, Six Flags, Cedar Fair systems 
+   - FP+
+   - TDR system, priority pass + DPA
+      - this one would require utility function to consider price as well as time
+   - Lightning Lane single / multi-pass
+      - this one would require utility function to consider price as well as time 
+   - Universal, Six Flags, Cedar Fair systems 
     
 10. Resort-level abstraction
     - if we want, we can make a resort.py object to which parks and hotels belong, and guests can move between them over the length of their stay
     - this would allow for the inclusion of additional behavior like:
-        - returning to hotel to relax midday
-        - park hopping for resort guests and APs
+      - returning to hotel to relax midday
+      - park hopping for resort guests and APs
     
 
 side note - the following are all addressed in Disney's FastPass: A Complicated History @ 1:02:00 :
