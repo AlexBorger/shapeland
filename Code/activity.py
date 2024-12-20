@@ -28,6 +28,7 @@ class Activity:
             )
         # characteristics
         self.name = self.activity_characteristics["name"]
+        self.park_area = self.activity_characteristics["park_area"]
         self.popularity = self.activity_characteristics["popularity"]
         self.mean_time = self.activity_characteristics["mean_time"]
        

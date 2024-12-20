@@ -40,9 +40,10 @@ def main():
 
     ATTRACTIONS = [
         {
-            "name": "Alpha",
-            "run_time": 10,
-            "hourly_throughput": 3000,
+            "name": "Ride of Passage",
+            "run_time": 5,
+            "park_area": "Pandora",
+            "hourly_throughput": 1600,
             "popularity": 10,
             "expedited_queue": True,
             "expedited_queue_ratio": 0.8,
@@ -50,9 +51,10 @@ def main():
             "adult_eligible": True,
         },
         {
-            "name": "Beta",
-            "run_time": 5,
-            "hourly_throughput": 2400,
+            "name": "Serengeti Safari",
+            "run_time": 20,
+            "park_area": "Africa",
+            "hourly_throughput": 3000,
             "popularity": 9,
             "expedited_queue": True,
             "expedited_queue_ratio": 0.8,
@@ -60,79 +62,147 @@ def main():
             "adult_eligible": True,
         },
         {
-            "name": "Gamma",
-            "run_time": 15,
+            "name": "Annapurna Adventure",
+            "run_time": 3,
+            "park_area": "Asia",
             "hourly_throughput": 2000,
             "popularity": 8,
             "expedited_queue": True,
             "expedited_queue_ratio": 0.8,
-            "child_eligible": True,
+            "child_eligible": False,
             "adult_eligible": True,
         },
         {
-            "name": "Delta",
+            "name": "Kaveri Rapids",
             "run_time": 5,
-            "hourly_throughput": 1200,
+            "park_area": "Asia",
+            "hourly_throughput": 2000,
             "popularity": 7,
             "expedited_queue": True,
             "expedited_queue_ratio": 0.8,
             "child_eligible": True,
-            "adult_eligible": False,
+            "adult_eligible": True,
         },
         {
-            "name": "Epsilon",
-            "run_time": 10,
-            "hourly_throughput": 2000,
+            "name": "Agave River Journey",
+            "run_time": 5,
+            "park_area": "Pandora",
+            "hourly_throughput": 1200,
             "popularity": 6,
+            "expedited_queue": True,
+            "expedited_queue_ratio": 0.8,
+            "child_eligible": True,
+            "adult_eligible": True,
+        },
+        {
+            "name": "Dinosaur",
+            "run_time": 4,
+            "park_area": "Dinoland USA",
+            "hourly_throughput": 2400,
+            "popularity": 5,
             "expedited_queue": True,
             "expedited_queue_ratio": 0.8,
             "child_eligible": False,
             "adult_eligible": True,
         },
         {
-            "name": "Zeta",
-            "run_time": 6,
-            "hourly_throughput": 2000,
-            "popularity": 5,
-            "expedited_queue": True,
-            "expedited_queue_ratio": 0.8,
-            "child_eligible": True,
-            "adult_eligible": False,
-        },
-        {
-            "name": "Eta",
-            "run_time": 12,
-            "hourly_throughput": 2400,
+            "name": "Primeval Hurl",
+            "run_time": 2,
+            "park_area": "Dinoland USA",
+            "hourly_throughput": 1000,
             "popularity": 4,
             "expedited_queue": True,
             "expedited_queue_ratio": 0.8,
-            "child_eligible": False,
+            "child_eligible": True,
             "adult_eligible": True,
         }
     ]
 
     ACTIVITIES = [
         {
-          "name": "sightseeing",
-          "popularity": 5,
-          "mean_time": 5
+            "name": "sightseeing",
+            "park_area": "Discovery Island",
+            "popularity": 5,
+            "mean_time": 5
         },
         {
-          "name": "show",
-          "popularity": 5,
-          "mean_time": 30
+            "name": "show",
+            "park_area": "Discovery Island",
+            "popularity": 5,
+            "mean_time": 30
         },
         {
-          "name": "merchandise",
-          "popularity": 5,
-          "mean_time": 30
+            "name": "merchandise",
+            "park_area": "Discovery Island",
+            "popularity": 5,
+            "mean_time": 30
         },
         {
-          "name": "food",
-          "popularity": 5,
-          "mean_time": 45
+            "name": "food",
+            "park_area": "Discovery Island",
+            "popularity": 5,
+            "mean_time": 45
         }
       ]
+
+    PARK_MAP = {
+        "Discovery Island":
+            {
+                "Discovery Island": 1,  # distance for POI within same area
+                "Pandora": 5,
+                "Africa": 5,
+                "Asia": 5,
+                "Dinoland USA": 5,
+                "Oasis": 3
+            },
+        "Pandora":
+            {
+                "Discovery Island": 5,
+                "Pandora": 2,
+                "Africa": 8,
+                "Asia": 10,
+                "Dinoland USA": 10,
+                "Oasis": 8
+            },
+        "Africa":
+            {
+                "Discovery Island": 5,
+                "Pandora": 8,
+                "Africa": 2,
+                "Asia": 6,
+                "Dinoland USA": 10,
+                "Oasis": 8
+            },
+        "Asia":
+            {
+                "Discovery Island": 5,
+                "Pandora": 10,
+                "Africa": 6,
+                "Asia": 2,
+                "Dinoland USA": 5,
+                "Oasis": 8
+            },
+        "Dinoland USA":
+            {
+                "Discovery Island": 5,
+                "Pandora": 10,
+                "Africa": 10,
+                "Asia": 5,
+                "Dinoland USA": 1,
+                "Oasis": 8
+            },
+        "Oasis":
+            {
+                "Discovery Island": 3,
+                "Pandora": 8,
+                "Africa": 8,
+                "Asia": 8,
+                "Dinoland USA": 8,
+                "Oasis": 1
+            }
+    }
+
+    ENTRANCE_PARK_AREA = "Oasis"
 
     # Initialize Park
     RNG_SEED = 5
@@ -155,6 +225,8 @@ def main():
     park = Park(
         attraction_list=ATTRACTIONS,
         activity_list=ACTIVITIES,
+        park_map=PARK_MAP,
+        entrance_park_area=ENTRANCE_PARK_AREA,
         plot_range=PLOT_RANGE,
         random_seed=RNG_SEED,
         version=VERSION,
@@ -209,7 +281,7 @@ def main():
     )
 
     # Store + Print Data
-    park.make_plots(show=SHOW_PLOTS)
+    # park.make_plots(show=SHOW_PLOTS)
     park.print_logs(N=5)
 
 

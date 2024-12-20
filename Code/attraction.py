@@ -1,6 +1,7 @@
 
 class Attraction:
-    """ Class which defines Attractions within the park simulation. Stores attraction characteristics, current state and log. """
+    """ Class which defines Attractions within the park simulation. Stores attraction characteristics,
+    current state and log. """
 
     def __init__(self, attraction_characteristics):
         """  
@@ -24,6 +25,7 @@ class Attraction:
 
         # characteristics
         self.name = self.attraction_characteristics["name"]
+        self.park_area = self.attraction_characteristics["park_area"]
         self.run_time = self.attraction_characteristics["run_time"]
         self.capacity = self.attraction_characteristics["hourly_throughput"] * (self.attraction_characteristics["run_time"]/60) 
         self.popularity = self.attraction_characteristics["popularity"]

@@ -12,14 +12,17 @@ from agent import Agent
 from attraction import Attraction
 from activity import Activity
 
+
 class Park:
     """ Park simulation class """
 
-    def __init__(self, attraction_list, activity_list, plot_range, version=1.0, random_seed=0, verbosity=0):
+    def __init__(self, attraction_list, activity_list, park_map, entrance_park_area, plot_range, version=1.0,
+                 random_seed=0, verbosity=0):
         """ 
         Required Inputs:
             attraction_list: list of attractions dictionaries
             activity_list: list of activity dictionaries
+            park_map: dictionary of source -> destination park area distances (minutes)
         Optional Inputs:
             random_seed: seeds random number generation for reproduction
             version: specify the version
@@ -29,6 +32,8 @@ class Park:
         # static
         self.attraction_list = attraction_list
         self.activity_list = activity_list
+        self.park_map = park_map
+        self.entrance_park_area = entrance_park_area
         self.plot_range = plot_range
         self.random_seed = random_seed
         self.version = version
@@ -157,7 +162,7 @@ class Park:
         total_arrivals = self.schedule[self.time]
         for new_arrival_index in range(total_arrivals):
             agent_index = self.arrival_index + new_arrival_index
-            self.agents[agent_index].arrive_at_park(time=self.time)
+            self.agents[agent_index].arrive_at_park(time=self.time, park_area=self.entrance_park_area)
         
         self.arrival_index += total_arrivals
 
@@ -173,12 +178,25 @@ class Park:
         for agent_id in idle_agent_ids:
             # does the park object really need these action/location values? or is it just an orchestrator that should
             # let the agents sort out their own internal state...?
-            action, location = self.agents[agent_id].make_state_change_decision(
+            agent = self.agents[agent_id]
+            action, location = agent.make_state_change_decision(
                 attractions_dict=self.attractions, 
                 activities_dict=self.activities, 
                 time=self.time,
                 park_closed=self.park_close <= self.time
             )
+            # determine travel time to new destination
+            current_park_area = agent.state["current_park_area"]
+            if location in self.attractions:
+                destination_park_area = self.attractions[location].park_area
+            elif location in self.activities:
+                destination_park_area = self.activities[location].park_area
+            elif location == 'gate':
+                destination_park_area = self.entrance_park_area
+            else:
+                raise ValueError(f"Agent cannot travel to location {location}.  Unknown park area mapping.")
+            travel_time = self.park_map[current_park_area][destination_park_area]
+            agent.set_destination(action, location, travel_time)
 
         # all agents that are now ready to take a delayed action should now be processed.
         # either: (a) agent is not at their next location and we (later) subtract 1 min from time_to_destination, or
@@ -280,22 +298,29 @@ class Park:
 
         if action == "traveling":
             if location in self.attractions:
-                agent.enter_queue(attraction=location, time=time)
+                park_area = self.attractions[location].park_area
+                agent.enter_queue(attraction=location, park_area=park_area, time=time)
                 self.attractions[location].add_to_queue(agent_id=agent.agent_id)
 
             if location in self.activities:
-                agent.begin_activity(activity=location, time=time)
+                park_area = self.activities[location].park_area
+                agent.begin_activity(activity=location, park_area=park_area, time=time)
                 self.activities[location].add_to_activity(
                     agent_id=agent.agent_id,
                     expedited_return_time=agent.state["expedited_return_time"]
                 )
 
         if action == "redeeming exp pass":
-            agent.enter_exp_queue(attraction=location, time=time)
+            if location not in self.attractions:
+                raise ValueError(f"Tried to redeem exp pass at non-attraction location: {location}")
+            park_area = self.attractions[location].park_area
+            agent.enter_exp_queue(attraction=location, park_area=park_area, time=time)
             self.attractions[location].add_to_exp_queue(agent_id=agent.agent_id)
 
+        # TODO: Figure out what to do with this part... where should they go? set park entrance area?
         if action == "get pass":
-            agent.get_pass(attraction=location, time=time)
+            park_area = self.attractions[location].park_area
+            agent.get_pass(attraction=location, park_area=park_area, time=time)
             self.attractions[location].remove_pass()
             expedited_return_time = self.attractions[location].get_exp_return_time()
             agent.assign_expedited_return_time(expedited_return_time=expedited_return_time, current_time=time)

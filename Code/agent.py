@@ -47,6 +47,7 @@ class Agent:
                 "exit_time": None, 
                 "within_park": False, 
                 "current_location": None,
+                "current_park_area": None,
                 "current_action": None,
                 "time_spent_at_current_location": 0,
                 "destination": None,
@@ -136,12 +137,14 @@ class Agent:
             if rng < floor: 
                 return age_class
 
-    def arrive_at_park(self, time):
+    def arrive_at_park(self, time, park_area):
         """ Takes a time (mins). Updates the Agent state and log to reflect arrival at the park """
 
         self.state["within_park"] = True
         self.state["arrival_time"] = time
         self.state["current_location"] = "gate"
+        self.state["current_park_area"] = park_area
+        # TODO: Figure out what to do about 'gate' location. maybe add PARK_ENTRANCE_AREA = "Oasis"..?
         self.state["current_action"] = "idling"
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent arrived at park at time {time}. "
@@ -164,10 +167,6 @@ class Agent:
                 activities_dict=activities_dict,
                 attractions_dict=attractions_dict,
             )
-        # update internal state based on decided destination
-        self.state["destination"] = location
-        self.state["time_to_destination"] = 5  # primitive 5 min delay on all actions for now
-        self.state["current_action"] = action
 
         return action, location
 
@@ -363,12 +362,21 @@ class Agent:
             if self.state["time_to_destination"] > 0:
                 self.state["time_to_destination"] -= 1
 
+    def set_destination(self, action, location, travel_time):
+        """ Updates agent state when they decide upon an action at a specified location"""
+
+        # update internal state based on decided destination
+        self.state["destination"] = location
+        self.state["time_to_destination"] = travel_time  # primitive 5 min delay on all actions for now
+        self.state["current_action"] = action
+
     # ACTIONS
     def leave_park(self, time):
         """ Updates agent state when they leave park """
 
         self.state["within_park"] = False
         self.state["current_location"] = "outside park"
+        self.state["current_park_area"] = None
         self.state["destination"] = None
         self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = None
@@ -376,41 +384,44 @@ class Agent:
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent left park at {time}. "
 
-    def enter_queue(self, attraction, time):
+    def enter_queue(self, attraction, park_area, time):
         """ Updates agent state when they enter an attraction queue """
 
         self.state["current_location"] = attraction
+        self.state["current_park_area"] = park_area
         self.state["destination"] = None
         self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "queueing"
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent entered queue for {attraction} at time {time}. "
 
-    def enter_exp_queue(self, attraction, time):
+    def enter_exp_queue(self, attraction, park_area, time):
         """ Updates agent state when they enter an attraction's expedited queue """
 
         self.state["current_location"] = attraction
+        self.state["current_park_area"] = park_area
         self.state["destination"] = None
         self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "queueing"
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent entered exp queue for {attraction} at time {time}. "
 
-    def begin_activity(self, activity, time):
+    def begin_activity(self, activity, park_area, time):
         """ Updates agent state when they visit an activity """
 
         self.state["current_location"] = activity
+        self.state["current_park_area"] = park_area
         self.state["destination"] = None
         self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "browsing"
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent visited the activity {activity} at time {time}. "
 
-    def get_pass(self, attraction, time):
+    def get_pass(self, attraction, park_area, time):
         """ Updates agent state when they get a pass """
 
-        # TODO: location should update to attraction if obtaining pass location is set to "attraction"
-        self.state["current_location"] = "gate"
+        self.state["current_location"] = attraction
+        self.state["current_park_area"] = park_area
         self.state["destination"] = None
         self.state["time_to_destination"] = 0  # should be idempotent, just for safekeeping
         self.state["current_action"] = "getting pass"
@@ -447,7 +458,7 @@ class Agent:
     def agent_exited_attraction(self, name, time):
         """ Update agents state after they leave an attraction """
 
-        self.state["current_location"] = "gate"
+        # self.state["current_location"] = "gate"  ## removing this because they shouldn't actually leave the area?
         self.state["current_action"] = "idling"
         self.state["attractions"][name]["times_completed"] += 1
         self.state["time_spent_at_current_location"] = 0
@@ -458,7 +469,7 @@ class Agent:
         """ Update agents state after they board an attraction """
         if name in self.state["expedited_pass"]:
             self.return_exp_pass(name)
-            self.state["current_location"] = name
+            # self.state["current_location"] = name  # they should now already be there from enter_queue/enter_exp_queue
             self.state["current_action"] = "riding"
             self.state["time_spent_at_current_location"] = 0
             self.log += (
@@ -466,7 +477,7 @@ class Agent:
             )
             return True
         else:
-            self.state["current_location"] = name
+            # self.state["current_location"] = name  # same as above
             self.state["current_action"] = "riding"
             self.state["time_spent_at_current_location"] = 0
             self.log += f"Agent boarded {name} at time {time}. "
@@ -475,7 +486,7 @@ class Agent:
     def agent_exited_activity(self, name, time):
         """ Update agents state after they leave an activity """
 
-        self.state["current_location"] = "gate"
+        # self.state["current_location"] = "gate"
         self.state["current_action"] = "idling"
         self.state["activities"][name]["times_visited"] += 1
         self.state["activities"][name]["time_spent"] += self.state["time_spent_at_current_location"]
