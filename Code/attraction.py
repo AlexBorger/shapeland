@@ -26,18 +26,26 @@ class Attraction:
         self.name = self.attraction_characteristics["name"]
         self.park_area = self.attraction_characteristics["park_area"]
         self.run_time = self.attraction_characteristics["run_time"]
-        self.capacity = self.attraction_characteristics["hourly_throughput"] * (
-                    self.attraction_characteristics["run_time"] / 60)
+        # self.capacity = self.attraction_characteristics["hourly_throughput"] * (
+        #             self.attraction_characteristics["run_time"] / 60)
+        self.hourly_capacity_ref = self.attraction_characteristics["hourly_throughput"]
+        self.num_vehicles = self.attraction_characteristics["num_vehicles"]
+        self.agents_per_vehicle = self.attraction_characteristics["agents_per_vehicle"]
+        self.theoretical_capacity = self.num_vehicles * self.agents_per_vehicle / self.run_time  # in minutes
         self.popularity = self.attraction_characteristics["popularity"]
         self.child_eligible = self.attraction_characteristics["child_eligible"]
         self.adult_eligible = self.attraction_characteristics["adult_eligible"]
-        self.run_time_remaining = 0
+        # self.run_time_remaining = 0
         self.expedited_queue = self.attraction_characteristics["expedited_queue"]
         self.exp_queue_ratio = self.attraction_characteristics["expedited_queue_ratio"]
         self.exp_queue_passes = 0
 
         # state
-        self.state["agents_in_attraction"] = []
+        # self.state["agents_in_attraction"] = []
+        self.state["vehicles"] = [
+            {"run_time_remaining": round(i * self.run_time / self.num_vehicles),  # evenly spread out vehicles
+             "agents_in_vehicle": []
+             } for i in range(self.num_vehicles)]
         self.state["queue"] = []
         self.state["exp_queue"] = []
         self.exp_pass_status = "open" if self.exp_queue_ratio > 0 else "closed"
@@ -112,38 +120,41 @@ class Attraction:
         exiting_agents = []
         loaded_agents = []
 
-        if self.run_time_remaining == 0:
-            # left agents off attraction
-            exiting_agents = self.state["agents_in_attraction"]
-            self.state["agents_in_attraction"] = []
-            self.run_time_remaining = self.run_time
+        for vehicle in self.state["vehicles"]:
 
-            # devote seats to queue and expedited queue
-            max_exp_queue_agents = int(self.capacity * self.exp_queue_ratio)
-            # Handle case where expedited queue has fewer agents than the maximum number of expedited queue spots
-            if len(self.state["exp_queue"]) < max_exp_queue_agents:
-                max_queue_agents = int(self.capacity - len(self.state["exp_queue"]))
-            else:
-                max_queue_agents = int(self.capacity - max_exp_queue_agents)
+            if vehicle["run_time_remaining"] == 0:
+                # left agents off attraction
+                exiting_agents.extend(vehicle["agents_in_vehicle"])
+                vehicle["agents_in_vehicle"] = []
+                vehicle["run_time_remaining"] = self.run_time
 
-            # load expedited queue agents
-            expedited_agents_to_load = [agent_id for agent_id in self.state["exp_queue"][:max_exp_queue_agents]]
-            self.state["agents_in_attraction"] = expedited_agents_to_load
-            self.state["exp_queue"] = self.state["exp_queue"][max_exp_queue_agents:]
+                # devote seats to queue and expedited queue
+                max_exp_queue_agents = int(self.agents_per_vehicle * self.exp_queue_ratio)
+                # Handle case where expedited queue has fewer agents than the maximum number of expedited queue spots
+                if len(self.state["exp_queue"]) < max_exp_queue_agents:
+                    max_queue_agents = int(self.agents_per_vehicle - len(self.state["exp_queue"]))
+                else:
+                    max_queue_agents = int(self.agents_per_vehicle - max_exp_queue_agents)
 
-            # load queue agents
-            agents_to_load = [agent_id for agent_id in self.state["queue"][:max_queue_agents]]
-            self.state["agents_in_attraction"].extend(agents_to_load)
-            self.state["queue"] = self.state["queue"][max_queue_agents:]
+                # load expedited queue agents
+                expedited_agents_to_load = [agent_id for agent_id in self.state["exp_queue"][:max_exp_queue_agents]]
+                vehicle["agents_in_vehicle"] = expedited_agents_to_load
+                self.state["exp_queue"] = self.state["exp_queue"][max_exp_queue_agents:]
 
-            loaded_agents = self.state["agents_in_attraction"]
+                # load queue agents
+                agents_to_load = [agent_id for agent_id in self.state["queue"][:max_queue_agents]]
+                vehicle["agents_in_vehicle"].extend(agents_to_load)
+                self.state["queue"] = self.state["queue"][max_queue_agents:]
+
+                loaded_agents.extend(vehicle["agents_in_vehicle"])
 
         return exiting_agents, loaded_agents
 
     def pass_time(self):
         """ Pass 1 minute of time """
 
-        self.run_time_remaining -= 1
+        for vehicle in self.state["vehicles"]:
+            vehicle["run_time_remaining"] -= 1
 
     def store_history(self, time):
         """ Stores metrics """
@@ -186,7 +197,7 @@ class Attraction:
         # TODO: Update this to be based on current time and num passes not yet redeemed.
         unredeemed_passes = self.state["exp_queue_passes_distributed"] - self.state["exp_queue_passes_redeemed"] - \
             self.state["exp_queue_passes_skipped"]
-        minutes_to_process_unredeemed = (unredeemed_passes * self.run_time) / (self.capacity * self.exp_queue_ratio)
+        minutes_to_process_unredeemed = unredeemed_passes / (self.theoretical_capacity * self.exp_queue_ratio)
         est_time_to_redeem_all = time + minutes_to_process_unredeemed
         min_post_time = max(est_time_to_redeem_all,
                             time + (5 - time % 5),  # rounds up to nearest 5, always > time
@@ -207,10 +218,11 @@ class Attraction:
         assumption that all queues will remain saturated during an agent's time in the queue, and that the ride will
         operate at its theoretical capacity.
         """
+        minutes_to_next_dispatch = min([vehicle["run_time_remaining"] for vehicle in self.state["vehicles"]])
         if self.expedited_queue:
             self.wait_time = (len(self.state["queue"]) // (
-                        self.capacity * (1 - self.exp_queue_ratio))) * self.run_time + self.run_time_remaining
+                        self.theoretical_capacity * (1 - self.exp_queue_ratio))) + minutes_to_next_dispatch
             self.exp_wait_time = (len(self.state["exp_queue"]) // (
-                        self.capacity * self.exp_queue_ratio)) * self.run_time + self.run_time_remaining
+                        self.theoretical_capacity * self.exp_queue_ratio)) + minutes_to_next_dispatch
         else:
-            self.wait_time = (len(self.state["queue"]) // self.capacity) * self.run_time + self.run_time_remaining
+            self.wait_time = (len(self.state["queue"]) // self.theoretical_capacity) + minutes_to_next_dispatch

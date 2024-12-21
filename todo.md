@@ -5,7 +5,7 @@
    - Arrive and leave park at same time.  Groups will also almost always stay together and arrivals and departures should coincide.  Very niche addition would be for guests to split up with some pressure to join back together before leaving, although not necessary.
 
 2. Add more detailed ride interactions. **[MED]**  Rides can break down and operate below theoretical capacity.  How does this impact the availability of future priority passes and how does it impact the queues for the rest of the day?
-   - Break up dispatches into ride vehicles whose total throughput matches attraction config
+   - Break up dispatches into ride vehicles whose total throughput matches attraction config  **[DONE]**
    - Define ride vehicle dimensions and fill vehicles based on group sizes
       - Blocked on #1.
 
@@ -36,9 +36,12 @@
    - guests will be upset if they have to wait long in the expedited queue. what mechanism could be implemented to ensure the wait times stay at or below 15 minutes? change split at merge?
       - Note: As of now, exp queue wait times are naturally low even on busy days.  This wouldn't be necessary until we account for 
 8. Log more data at each timestep for on the fly analytics **[LOW]**
+   - log internal estimate / posted wait times per agent+attraction and actual wait times
+      - this can then be used to analyze how frequently agents experience overposts/underposts and the extent of each
    - add graphs:
       - Number of Guests in Park by minute/hour of Operating Day **[DONE]**
       - Return time vs time of day for each attraction - shows how quickly expedited passes are distributed **[DONE]**
+   - figure out why agents show as doing activities after park close **[LOW]**
 
 9. Add more expedited systems
    - FP+

@@ -684,42 +684,42 @@ class Park:
             y_max=self.plot_range["Agent Arrivals and Departures"],
             title="Agent Arrivals and Departures",
             location=f"{self.version}/Agent Arrivals and Departures",
-            show=show,
+            show=show
         )
 
         self.make_barplot(
-            dict_list=avg_queue_wait_time, 
-            x="Attraction", 
-            y="Average Wait Time", 
+            dict_list=avg_queue_wait_time,
+            x="Attraction",
+            y="Average Wait Time",
             hue="Queue Type",
             y_max=self.plot_range["Attraction Average Wait Times"],
-            title="Attraction Average Wait Times", 
-            location=f"{self.version}/Attraction Average Wait Times", 
+            title="Attraction Average Wait Times",
+            location=f"{self.version}/Attraction Average Wait Times",
             show=show
         )
 
         self.make_histogram(
             dict_list=attraction_counter, 
-            x="Total Attractions Visited", 
-            title="Agent Attractions Histogram", 
+            x="Total Attractions Visited",
+            title="Agent Attractions Histogram",
             location=f"{self.version}/Agent Attractions Histogram",
-            show=show,
-        )
-
-        self.make_barplot(
-            dict_list=attraction_density, 
-            x="Attraction", 
-            y="Visits", 
-            hue=None,
-            y_max=self.plot_range["Attraction Total Visits"],
-            estimator=sum,
-            title="Attraction Total Visits", 
-            location=f"{self.version}/Attraction Total Visits", 
             show=show
         )
 
         self.make_barplot(
-            dict_list= [
+            dict_list=attraction_density,
+            x="Attraction",
+            y="Visits",
+            hue=None,
+            y_max=self.plot_range["Attraction Total Visits"],
+            estimator=sum,
+            title="Attraction Total Visits",
+            location=f"{self.version}/Attraction Total Visits",
+            show=show
+        )
+
+        self.make_barplot(
+            dict_list=[
                 {   
                     "Expedited Passes": " ",
                     "Total Passes": self.history["distributed_passes"],
