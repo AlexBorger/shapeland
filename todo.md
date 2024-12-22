@@ -8,6 +8,11 @@
    - Break up dispatches into ride vehicles whose total throughput matches attraction config  **[DONE]**
    - Define ride vehicle dimensions and fill vehicles based on group sizes
       - Blocked on #1.
+   - Attraction breakdowns and slowness
+      - with some probability at each timestep, attraction can experience a slight delay, or
+      - a complete breakdown requiring evacs, queue dump and agent compensation in terms of free exp passes
+         - can specify rules of redemption like which attractions are eligible, time window, etc
+      - these can be specified by float parameters at attraction init, like "reliability_factor" or "breakdown_probability"
 
 3. Food options can be diversified and can be modeled as FCFS queues themselves. **[MED]**
    - We could model each food location with a queue and specify average time to eat/drink items from that location.
@@ -59,6 +64,12 @@
     - We can create a hotel-level abstraction called hotel.py or resort.py that has its own amenities
       - Each resort can have multiple transportation methods to other resorts and parks
     
+11. Agent Satisfaction
+    - If we collect how many attractions / activities an agent wanted to do as well as what they accomplished by park close, we can create a formula to output a CSAT score (out of 10)
+    - Can factor in things like:
+       - how often their actual wait times were less/more than posted
+       - if they got to do their most sought-after attractions
+       - attraction breakdowns
     
 
 side note - the following are all addressed in Disney's FastPass: A Complicated History @ 1:02:00 :
