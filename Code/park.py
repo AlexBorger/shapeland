@@ -186,9 +186,10 @@ class Park:
             # let the agents sort out their own internal state...?
             agent = self.agents[agent_id]
             action, location = agent.make_state_change_decision(
-                attractions_dict=self.attractions, 
-                activities_dict=self.activities, 
+                attractions_dict=self.attractions,
+                activities_dict=self.activities,
                 time=self.time,
+                park_map=self.park_map,
                 park_closed=self.park_close <= self.time
             )
             # determine travel time to new destination

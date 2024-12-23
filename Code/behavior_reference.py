@@ -19,7 +19,8 @@ BEHAVIOR_ARCHETYPE_PARAMETERS = {
         "stay_time_preference": 540,
         "allow_repeats": True,
         "attraction_preference": 0.6,
-        "wait_threshold": 480,
+        "wait_threshold": 400,
+        "wait_discount_beta": 0.9975,
         "percent_no_child_rides": 0.18,
         "percent_no_adult_rides": 0.02,
         "percent_no_preference": 0.8
@@ -29,7 +30,8 @@ BEHAVIOR_ARCHETYPE_PARAMETERS = {
         "stay_time_preference": 480,
         "allow_repeats": True,
         "attraction_preference": 0.5,
-        "wait_threshold": 420,
+        "wait_threshold": 300,
+        "wait_discount_beta": 0.9925,
         "percent_no_child_rides": 0.2,
         "percent_no_adult_rides": 0.2,
         "percent_no_preference": 0.6
@@ -39,7 +41,8 @@ BEHAVIOR_ARCHETYPE_PARAMETERS = {
         "stay_time_preference": 420,
         "allow_repeats": False,
         "attraction_preference": 0.4, 
-        "wait_threshold": 360,
+        "wait_threshold": 240,
+        "wait_discount_beta": 0.995,
         "percent_no_child_rides": 0.05,
         "percent_no_adult_rides": 0.05,
         "percent_no_preference": 0.9
@@ -49,7 +52,8 @@ BEHAVIOR_ARCHETYPE_PARAMETERS = {
         "stay_time_preference": 360,
         "allow_repeats": False,
         "attraction_preference": 0.3,
-        "wait_threshold": 240,
+        "wait_threshold": 180,
+        "wait_discount_beta": 0.9925,
         "percent_no_child_rides": 0.3,
         "percent_no_adult_rides": 0.3,
         "percent_no_preference": 0.4
@@ -59,7 +63,8 @@ BEHAVIOR_ARCHETYPE_PARAMETERS = {
         "stay_time_preference": 300,
         "allow_repeats": False,
         "attraction_preference": 0.2,
-        "wait_threshold": 180,
+        "wait_threshold": 120,
+        "wait_discount_beta": 0.99,
         "percent_no_child_rides": 0.1,
         "percent_no_adult_rides": 0.8,
         "percent_no_preference": 0.1
@@ -70,6 +75,7 @@ BEHAVIOR_ARCHETYPE_PARAMETERS = {
         "allow_repeats": False,
         "attraction_preference": 0.2,
         "wait_threshold": 90,
+        "wait_discount_beta": 0.9875,
         "percent_no_child_rides": 0.0,
         "percent_no_adult_rides": 0.9,
         "percent_no_preference": 0.1

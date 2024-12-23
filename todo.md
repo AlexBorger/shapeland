@@ -31,11 +31,14 @@
    - even even more accurate would be to build an actual network of pathways that agents have to navigate to reach their destination.  they may or may not know the optimal path, so algorithmic path routing would need to take that into account.  **[TO DO]** **[VERY HARD]**
 5. Update guest utility function to factor in:
    - distance of options **[LOW-MED]**
+      - simple version: **[DONE]**
    - number of times option has already been done **[LOW-MED]**
+      - simple version: **[DONE]**
 
 6. Intentional Overposting **[LOW to HARD]**
    - in order to influence guest flow, overposting can be used to influence which attractions guests will choose.
    - guests should always act based on posted wait times and not actual wait times or true estimates.
+   - while this mechanism is not blocked on other work, usefulness is related to analysis of actual vs posted and attraction slowness/breakdowns
 
 7. No more than 15 minutes in expedited queue  **[LOW-MED]**
    - guests will be upset if they have to wait long in the expedited queue. what mechanism could be implemented to ensure the wait times stay at or below 15 minutes? change split at merge?
@@ -47,6 +50,8 @@
       - Number of Guests in Park by minute/hour of Operating Day **[DONE]**
       - Return time vs time of day for each attraction - shows how quickly expedited passes are distributed **[DONE]**
    - figure out why agents show as doing activities after park close **[LOW]**
+   - analyze agent outcomes by archetype
+      - how many attractions do they do? each archetype will have its own distribution  **[LOW]**
 
 9. Add more expedited systems
    - FP+
