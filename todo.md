@@ -2,6 +2,7 @@
 
 1. Add group dynamics. **[HARD]** Guests usually visit parks in groups and there is a strong bias for groups to do activities together.  The following features should be explored:
    - Group decisioning: Guests should usually make decisions together and visit attractions that everyone can agree on, with the occasional sit-out from a minority of the party
+        - One agent can be identified as the lead agent that takes care of make_state_change_decision on behalf of the entire group.   
    - Arrive and leave park at same time.  Groups will also almost always stay together and arrivals and departures should coincide.  Very niche addition would be for guests to split up with some pressure to join back together before leaving, although not necessary.
 
 2. Add more detailed ride interactions. **[MED]**  Rides can break down and operate below theoretical capacity.  How does this impact the availability of future priority passes and how does it impact the queues for the rest of the day?
@@ -52,6 +53,10 @@
    - figure out why agents show as doing activities after park close **[LOW]**
    - analyze agent outcomes by archetype
       - how many attractions do they do? each archetype will have its own distribution  **[LOW]**
+   - analyze average number of attractions+activities done
+   - analyze ride efficiency expressed in both actual vs theoretical capacity and dispatch capacity
+   - analyze percent of day agents have 1+ exp passes in hand, or plot time vs # agents with no exp pass in hand
+   - analyze number of exp passes redeemed / abandoned by archetype
 
 9. Add more expedited systems
    - FP+

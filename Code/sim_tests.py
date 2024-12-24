@@ -129,6 +129,19 @@ def main():
             "expedited_queue_ratio": 0.8,
             "child_eligible": True,
             "adult_eligible": True,
+        },
+        {
+            "name": "It's Difficult to Be an Insect",
+            "run_time": 13,
+            "park_area": "Discovery Island",
+            "hourly_throughput": 1985,
+            "num_vehicles": 1,
+            "agents_per_vehicle": 430,
+            "popularity": 3,
+            "expedited_queue": True,
+            "expedited_queue_ratio": 0.8,
+            "child_eligible": True,
+            "adult_eligible": True,
         }
     ]
 
