@@ -195,6 +195,8 @@ class Attraction:
         # TODO: Do this after each agent obtains a pass.
         # TODO: Add handling of failed attempt to get pass?  Would the above warrant this?
         # TODO: Update this to be based on current time and num passes not yet redeemed.
+        if not self.expedited_queue:
+            raise ValueError(f"ERROR: Attraction {self.name} asked to update exp return window when not active.")
         unredeemed_passes = self.state["exp_queue_passes_distributed"] - self.state["exp_queue_passes_redeemed"] - \
             self.state["exp_queue_passes_skipped"]
         minutes_to_process_unredeemed = unredeemed_passes / (self.theoretical_capacity * self.exp_queue_ratio)

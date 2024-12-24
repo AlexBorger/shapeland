@@ -178,7 +178,8 @@ class Park:
         # update attraction posted wait times and expedited queue return times
         for attraction_name, attraction in self.attractions.items():
             attraction.update_wait_times()
-            attraction.update_exp_return_window(time=self.time, close=self.park_close)
+            if attraction.expedited_queue:
+                attraction.update_exp_return_window(time=self.time, close=self.park_close)
 
         # get idle activity action
         for agent_id in idle_agent_ids:

@@ -19,12 +19,21 @@ def calculate_utility(w_0, popularity, w_1, n_past, n_future, w_2, wait_time, w_
     return utility
 
 
-def softmax(attraction_utilities):
+def softmax(attraction_utilities, normalize=True):
     """ Quick self-implementation of softmax.
     attraction_utilities: dict of utility scores of valid attractions.
     output: dict of attraction_name: probability of selecting item for all keys in attraction_utilities
     """
-    e_x_sum = sum([np.exp(u) for u in attraction_utilities.values()])
+    if normalize:
+        # we need to get mu, std of these utilities and then return softmax of that scaled set
+        mu = np.mean([attraction_utilities[u] for u in attraction_utilities])
+        std = max(np.std([attraction_utilities[u] for u in attraction_utilities]), 1)
+        attr_util_norm = {
+            u: (attraction_utilities[u] - mu) / std for u in attraction_utilities
+        }
+        e_x_sum = sum([np.exp(u) for u in attr_util_norm.values()])
+    else:
+        e_x_sum = sum([np.exp(u) for u in attraction_utilities.values()])
     return {
         attraction_name: np.exp(utility) / e_x_sum
         for attraction_name, utility in attraction_utilities.items()
@@ -124,7 +133,7 @@ class Agent:
             }
         )
         if not self.state["age_class"]:
-            assert True is False
+            raise ValueError("Agent age_class not set.")
 
         parameters = BEHAVIOR_ARCHETYPE_PARAMETERS[behavior_archetype]
         rng = np.random.default_rng(self.random_seed + self.agent_id)
@@ -180,6 +189,8 @@ class Agent:
     def make_state_change_decision(self, attractions_dict, activities_dict, time, park_map, park_closed):
         """  When an agent is idle allow them to make a decision about what to do next. """
         # TODO: Should this method return action, location tuple or should it update internal state? or both?
+        # ^ no, I think it's ok as-is.  agent wants to do something, park object will orchestrate the result of that
+        # intended action.
 
         # decide if they want to leave
         # always leave park if the park is closed
@@ -236,8 +247,12 @@ class Agent:
         history and their expedited_pass status. If no valid attractions exist then they will default to 
         an activity. """
 
+        # if agent has room for another exp pass, they should attempt to get one.?
+        can_get_exp = len(self.state["expedited_pass"]) < self.state["exp_limit"] \
+            and self.state["expedited_pass_ability"]
+
         coinflip = random.uniform(0, 1)
-        if coinflip <= self.behavior["attraction_preference"]:
+        if coinflip <= self.behavior["attraction_preference"] or can_get_exp:
             # determine which attractions agent is eligible for
             # remove repeats and/or attractions with exp pass in hand
             # TODO: Determine if we should allow attractions w/ exp passes in hand to be considered for standby
@@ -314,6 +329,11 @@ class Agent:
             ) for attraction_name, parameters in attractions_dict.items()
             if attraction_name in valid_attractions
         }
+        # remove any attractions with negative utility
+        for attraction in valid_attractions:
+            if attraction_utilities[attraction] <= 0:
+                valid_attractions.remove(attraction)
+                del attraction_utilities[attraction]
         action, location = None, None
         step_rng = 0
         while len(valid_attractions) > 0 and not action:
@@ -328,11 +348,11 @@ class Agent:
                 k=1
             )[0]
             if (
-                    attraction_wait_times[desired_attraction] > self.state["exp_wait_threshold"]
-                    and self.state["expedited_pass_ability"]
-                    and len(self.state["expedited_pass"]) < self.state["exp_limit"]
-                    and attractions_dict[desired_attraction].expedited_queue
-                    and attractions_dict[desired_attraction].exp_pass_status == "open"
+                attraction_wait_times[desired_attraction] > self.state["exp_wait_threshold"]
+                and self.state["expedited_pass_ability"]
+                and len(self.state["expedited_pass"]) < self.state["exp_limit"]
+                and attractions_dict[desired_attraction].expedited_queue
+                and attractions_dict[desired_attraction].exp_pass_status == "open"
             ):
                 action, location = "get pass", desired_attraction
             elif (

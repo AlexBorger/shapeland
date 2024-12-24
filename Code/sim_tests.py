@@ -142,6 +142,19 @@ def main():
             "expedited_queue_ratio": 0.8,
             "child_eligible": True,
             "adult_eligible": True,
+        },
+        {
+            "name": "TriceraTop Spin",
+            "run_time": 4,
+            "park_area": "Dinoland USA",
+            "hourly_throughput": 960,
+            "num_vehicles": 1,
+            "agents_per_vehicle": 64,
+            "popularity": 3,
+            "expedited_queue": False,
+            "expedited_queue_ratio": 0,
+            "child_eligible": True,
+            "adult_eligible": False,
         }
     ]
 
