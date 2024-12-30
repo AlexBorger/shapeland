@@ -89,6 +89,7 @@ class Agent:
                 "time_spent_at_current_location": 0,
                 "destination": None,
                 "time_to_destination": 0,
+                "anticipated_wait_time": 0,
                 "expedited_return_time": [],
                 "expedited_pass": [],
                 "expedited_pass_ability": exp_ability,
@@ -186,6 +187,15 @@ class Agent:
         self.state["time_spent_at_current_location"] = 0
         self.log += f"Agent arrived at park at time {time}. "
 
+    def balk(self, time, expected_wait_time, actual_wait_time):
+        """ Reset agent action due to unexpected increase in posted wait time"""
+
+        self.state["current_action"] = "idling"
+        self.state["time_spent_at_current_location"] = 0
+        delta = int(actual_wait_time - expected_wait_time)
+        loc = self.state["current_location"]
+        self.log += f"Agent balked at {loc} at time {time} due to +{delta} minute posted wait. "
+
     def make_state_change_decision(self, attractions_dict, activities_dict, time, park_map, park_closed):
         """  When an agent is idle allow them to make a decision about what to do next. """
         # TODO: Should this method return action, location tuple or should it update internal state? or both?
@@ -212,7 +222,6 @@ class Agent:
 
     def make_attraction_activity_decision(self, activities_dict, attractions_dict, park_map):
         """ Decide what to do """
-        # TODO: If agent has a valid expedited queue pass, they should use it.
         for i in range(len(self.state["expedited_pass"])):
             if self.state["expedited_return_time"][i] <= 0:
                 action, location = "redeeming exp pass", self.state["expedited_pass"][i]
@@ -417,13 +426,14 @@ class Agent:
             if self.state["time_to_destination"] > 0:
                 self.state["time_to_destination"] -= 1
 
-    def set_destination(self, action, location, travel_time):
+    def set_destination(self, action, location, travel_time, anticipated_wait_time):
         """ Updates agent state when they decide upon an action at a specified location"""
 
         # update internal state based on decided destination
         self.state["destination"] = location
         self.state["time_to_destination"] = travel_time  # primitive 5 min delay on all actions for now
         self.state["current_action"] = action
+        self.state["anticipated_wait_time"] = anticipated_wait_time
 
     # ACTIONS
     def leave_park(self, time):

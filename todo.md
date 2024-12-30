@@ -81,11 +81,12 @@
        - if they got to do their most sought-after attractions
        - attraction breakdowns
     
-12. Balking **[LOW]**
+12. Balking **[LOW]** **[MOSTLY DONE]**
     - As it stands, agents choose what they want to do when they complete an attraction or activity and do not reevaluate their decision when they arrive at their destination.
     - We can introduce a balking mechanism by which agents check if the current posted wait time is within range of what it was when they chose it.
     - If it is above that balking point, enter an idle state and make state change decision in the next time step
-    
+    - one additional criterion for balking could be queues overflowing beyond the main entrance.  each attraction could have a fixed number of agents it can contain and a flag to denote if the end of the queue is inside or outside the entrance
+    - we could improve this by allowing agents to periodically reassess en-route as opposed to only when they arrive at their destination. **[LOW]**
 
 side note - the following are all addressed in Disney's FastPass: A Complicated History @ 1:02:00 :
 

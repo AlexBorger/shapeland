@@ -195,8 +195,10 @@ class Park:
             )
             # determine travel time to new destination
             current_park_area = agent.state["current_park_area"]
+            anticipated_wait_time = 0
             if location in self.attractions:
                 destination_park_area = self.attractions[location].park_area
+                anticipated_wait_time = self.attractions[location].get_wait_time()
             elif location in self.activities:
                 destination_park_area = self.activities[location].park_area
             elif location == 'gate':
@@ -204,7 +206,7 @@ class Park:
             else:
                 raise ValueError(f"Agent cannot travel to location {location}.  Unknown park area mapping.")
             travel_time = self.park_map[current_park_area][destination_park_area]
-            agent.set_destination(action, location, travel_time)
+            agent.set_destination(action, location, travel_time, anticipated_wait_time)
 
         # all agents that are now ready to take a delayed action should now be processed.
         # either: (a) agent is not at their next location and we (later) subtract 1 min from time_to_destination, or
@@ -310,8 +312,14 @@ class Park:
         if action == "traveling":
             if location in self.attractions:
                 park_area = self.attractions[location].park_area
-                agent.enter_queue(attraction=location, park_area=park_area, time=time)
-                self.attractions[location].add_to_queue(agent_id=agent.agent_id)
+                anticipated_wait_time = agent.state["anticipated_wait_time"]
+                current_posted_wait_time = self.attractions[location].get_wait_time()
+                if current_posted_wait_time >= anticipated_wait_time + 15:
+                    agent.balk(time=time, expected_wait_time=anticipated_wait_time,
+                               actual_wait_time=current_posted_wait_time)
+                else:
+                    agent.enter_queue(attraction=location, park_area=park_area, time=time)
+                    self.attractions[location].add_to_queue(agent_id=agent.agent_id)
 
             if location in self.activities:
                 park_area = self.activities[location].park_area
